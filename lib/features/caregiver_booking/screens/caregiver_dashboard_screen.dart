@@ -154,14 +154,14 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
 
   // ── TAB 2: Edit Profile ──────────────────────────────────────────────────
   Widget _buildProfileTab(String uid) {
-    return StreamBuilder<List<dynamic>>(
+    return StreamBuilder<Map<String, dynamic>?>(
       stream: Stream.fromFuture(
         FirestoreProfileFuture.getProfile(_service, uid),
       ),
       builder: (context, snapshot) {
         // Pre-fill controllers if data arrived and fields are empty
         if (snapshot.hasData && _nameCtrl.text.isEmpty) {
-          final data = snapshot.data as Map<String, dynamic>?;
+          final data = snapshot.data;
           if (data != null) {
             _nameCtrl.text = data['name'] ?? '';
             _specializationCtrl.text = data['specialization'] ?? '';

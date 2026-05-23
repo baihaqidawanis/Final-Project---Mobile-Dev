@@ -78,64 +78,6 @@ class CaregiverFirestoreService {
     await _caregivers.doc(uid).update(updatedFields);
   }
 
-  // ════════════════════════════════════════════════════════════════════════
-  //  SEED — Add dummy caregiver data for testing (call once)
-  // ════════════════════════════════════════════════════════════════════════
-  Future<void> seedDummyCaregivers() async {
-    final existing = await _caregivers.limit(1).get();
-    if (existing.docs.isNotEmpty) return;
+  // NOTE: No seed data — caregivers appear when they register via MitraRegisterScreen
 
-    final dummies = [
-      {
-        'name': 'Siti Rahayu',
-        'specialization': 'Elderly Care',
-        'pricePerHour': 75000.0,
-        'rating': 4.9,
-        'totalReviews': 128,
-        'photoUrl': '',
-        'bio': 'Berpengalaman 5 tahun merawat lansia. Sabar dan telaten.',
-        'area': 'Jakarta Selatan',
-        'isAvailable': true,
-      },
-      {
-        'name': 'Budi Santoso',
-        'specialization': 'Post-Surgery Care',
-        'pricePerHour': 90000.0,
-        'rating': 4.7,
-        'totalReviews': 85,
-        'photoUrl': '',
-        'bio': 'Perawat bersertifikat dengan pengalaman perawatan pasca operasi.',
-        'area': 'Bekasi',
-        'isAvailable': true,
-      },
-      {
-        'name': 'Dewi Kusuma',
-        'specialization': 'Child Care',
-        'pricePerHour': 65000.0,
-        'rating': 4.8,
-        'totalReviews': 210,
-        'photoUrl': '',
-        'bio': 'Spesialis perawatan anak, berpengalaman dengan anak berkebutuhan khusus.',
-        'area': 'Depok',
-        'isAvailable': true,
-      },
-      {
-        'name': 'Ahmad Fauzi',
-        'specialization': 'Physiotherapy',
-        'pricePerHour': 120000.0,
-        'rating': 4.6,
-        'totalReviews': 64,
-        'photoUrl': '',
-        'bio': 'Fisioterapis bersertifikat, membantu pemulihan pasca stroke.',
-        'area': 'Tangerang',
-        'isAvailable': true,
-      },
-    ];
-
-    final batch = _db.batch();
-    for (final d in dummies) {
-      batch.set(_caregivers.doc(), d);
-    }
-    await batch.commit();
-  }
 }
