@@ -1,0 +1,419 @@
+import 'package:flutter/material.dart';
+import '../../../core/constants/app_colors.dart';
+import '../models/booking_model.dart';
+import '../models/caregiver_profile_model.dart';
+import '../services/caregiver_firestore_service.dart';
+import '../widgets/status_badge.dart';
+
+class CaregiverDetailScreen extends StatefulWidget {
+  final CaregiverProfileModel caregiver;
+  final String familyId;
+  final String familyName;
+
+  const CaregiverDetailScreen({
+    super.key,
+    required this.caregiver,
+    required this.familyId,
+    required this.familyName,
+  });
+
+  @override
+  State<CaregiverDetailScreen> createState() => _CaregiverDetailScreenState();
+}
+
+class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
+  final _service = CaregiverFirestoreService();
+  final _notesCtrl = TextEditingController();
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _notesCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 60)),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 9, minute: 0),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _selectedTime = picked);
+  }
+
+  Future<void> _submitBooking() async {
+    if (_selectedDate == null || _selectedTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select date and time')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final dateTime = DateTime(
+      _selectedDate!.year,
+      _selectedDate!.month,
+      _selectedDate!.day,
+      _selectedTime!.hour,
+      _selectedTime!.minute,
+    );
+
+    final booking = BookingModel(
+      bookingId: '',
+      familyId: widget.familyId,
+      caregiverId: widget.caregiver.uid,
+      caregiverName: widget.caregiver.name,
+      familyName: widget.familyName,
+      dateTime: dateTime,
+      specialization: widget.caregiver.specialization,
+      pricePerHour: widget.caregiver.pricePerHour,
+      notes: _notesCtrl.text.trim(),
+      status: BookingStatus.pending,
+      createdAt: DateTime.now(),
+    );
+
+    await _service.createBooking(booking);
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Booking submitted successfully!'),
+          backgroundColor: AppColors.accepted,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.caregiver;
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: CustomScrollView(
+        slivers: [
+          // App bar with avatar
+          SliverAppBar(
+            expandedHeight: 200,
+            pinned: true,
+            backgroundColor: AppColors.primary,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                color: AppColors.primary,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 48),
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                        border:
+                            Border.all(color: Colors.white, width: 3),
+                      ),
+                      child: const Icon(Icons.person,
+                          color: Colors.white, size: 44),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      c.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Info chips
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    children: [
+                      _infoBadge(
+                          Icons.work_outline, c.specialization, AppColors.primary),
+                      _infoBadge(Icons.star_rounded,
+                          '${c.rating} (${c.totalReviews} reviews)',
+                          const Color(0xFFFFC107)),
+                      _infoBadge(
+                          Icons.payments_outlined,
+                          'Rp ${(c.pricePerHour / 1000).toStringAsFixed(0)}k/jam',
+                          AppColors.accent),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Bio
+                  const Text('About',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 8),
+                  Text(c.bio,
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, height: 1.5)),
+                  const SizedBox(height: 28),
+
+                  const Divider(color: AppColors.border),
+                  const SizedBox(height: 20),
+
+                  // Booking form
+                  const Text('Book Appointment',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 16),
+
+                  // Date picker
+                  _dateTimeTile(
+                    icon: Icons.calendar_today_outlined,
+                    label: 'Date',
+                    value: _selectedDate == null
+                        ? 'Select date'
+                        : '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
+                    onTap: _pickDate,
+                    filled: _selectedDate != null,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Time picker
+                  _dateTimeTile(
+                    icon: Icons.access_time_rounded,
+                    label: 'Time',
+                    value: _selectedTime == null
+                        ? 'Select time'
+                        : _selectedTime!.format(context),
+                    onTap: _pickTime,
+                    filled: _selectedTime != null,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Notes
+                  TextField(
+                    controller: _notesCtrl,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Notes (optional)',
+                      hintText: 'Any special requirements...',
+                      prefixIcon: Padding(
+                        padding: EdgeInsets.only(bottom: 40),
+                        child: Icon(Icons.note_outlined),
+                      ),
+                      alignLabelWithHint: true,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+
+                  // My bookings section
+                  _buildMyBookings(),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+        child: ElevatedButton.icon(
+          onPressed: _isLoading ? null : _submitBooking,
+          icon: _isLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child:
+                      CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+              : const Icon(Icons.check_circle_outline),
+          label:
+              Text(_isLoading ? 'Submitting...' : 'Instant Book'),
+        ),
+      ),
+    );
+  }
+
+  Widget _infoBadge(IconData icon, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(text,
+              style: TextStyle(
+                  fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _dateTimeTile({
+    required IconData icon,
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+    required bool filled,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: filled ? AppColors.primary.withOpacity(0.06) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: filled ? AppColors.primary : AppColors.border,
+            width: filled ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon,
+                color: filled ? AppColors.primary : AppColors.textSecondary,
+                size: 20),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textSecondary)),
+                Text(value,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: filled
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                    )),
+              ],
+            ),
+            const Spacer(),
+            const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMyBookings() {
+    return StreamBuilder<List<BookingModel>>(
+      stream: _service.getBookingsByFamily(widget.familyId),
+      builder: (context, snapshot) {
+        final bookings = snapshot.data
+                ?.where((b) => b.caregiverId == widget.caregiver.uid)
+                .toList() ??
+            [];
+        if (bookings.isEmpty) return const SizedBox();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Divider(color: AppColors.border),
+            const SizedBox(height: 16),
+            const Text('Your Bookings with this Caregiver',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 12),
+            ...bookings.map((b) => _bookingTile(b)),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _bookingTile(BookingModel b) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${b.dateTime.day}/${b.dateTime.month}/${b.dateTime.year} · ${b.dateTime.hour.toString().padLeft(2, '0')}:${b.dateTime.minute.toString().padLeft(2, '0')}',
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary),
+                ),
+                if (b.notes.isNotEmpty)
+                  Text(b.notes,
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+          Column(
+            children: [
+              StatusBadge(status: b.status),
+              if (b.status == BookingStatus.pending) ...[
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => _service.cancelBooking(b.bookingId),
+                  child: const Text('Cancel',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.cancelled,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

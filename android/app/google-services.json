@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "375176004048",
+    "project_id": "final-project-mobile-dev-1c1c4",
+    "storage_bucket": "final-project-mobile-dev-1c1c4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:375176004048:android:9837e87795d1620558b9d5",
+        "android_client_info": {
+          "package_name": "com.healink.healink"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC9Ij3L2QZn2iIJufjjEmhrbMKg7NcRZsc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
