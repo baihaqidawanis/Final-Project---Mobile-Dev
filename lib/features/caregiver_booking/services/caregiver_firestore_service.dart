@@ -5,6 +5,9 @@ import '../models/caregiver_profile_model.dart';
 class CaregiverFirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  // Public getter for direct Firestore access (e.g. profile fetch)
+  FirebaseFirestore get db => _db;
+
   // ── Collections ──────────────────────────────────────────────────────────
   CollectionReference<Map<String, dynamic>> get _bookings =>
       _db.collection('bookings');
@@ -70,12 +73,17 @@ class CaregiverFirestoreService {
     });
   }
 
+  Future<void> updateCaregiverProfile(
+      String uid, Map<String, dynamic> updatedFields) async {
+    await _caregivers.doc(uid).update(updatedFields);
+  }
+
   // ════════════════════════════════════════════════════════════════════════
   //  SEED — Add dummy caregiver data for testing (call once)
   // ════════════════════════════════════════════════════════════════════════
   Future<void> seedDummyCaregivers() async {
     final existing = await _caregivers.limit(1).get();
-    if (existing.docs.isNotEmpty) return; // already seeded
+    if (existing.docs.isNotEmpty) return;
 
     final dummies = [
       {
@@ -86,6 +94,7 @@ class CaregiverFirestoreService {
         'totalReviews': 128,
         'photoUrl': '',
         'bio': 'Berpengalaman 5 tahun merawat lansia. Sabar dan telaten.',
+        'area': 'Jakarta Selatan',
         'isAvailable': true,
       },
       {
@@ -96,6 +105,7 @@ class CaregiverFirestoreService {
         'totalReviews': 85,
         'photoUrl': '',
         'bio': 'Perawat bersertifikat dengan pengalaman perawatan pasca operasi.',
+        'area': 'Bekasi',
         'isAvailable': true,
       },
       {
@@ -106,6 +116,7 @@ class CaregiverFirestoreService {
         'totalReviews': 210,
         'photoUrl': '',
         'bio': 'Spesialis perawatan anak, berpengalaman dengan anak berkebutuhan khusus.',
+        'area': 'Depok',
         'isAvailable': true,
       },
       {
@@ -116,6 +127,7 @@ class CaregiverFirestoreService {
         'totalReviews': 64,
         'photoUrl': '',
         'bio': 'Fisioterapis bersertifikat, membantu pemulihan pasca stroke.',
+        'area': 'Tangerang',
         'isAvailable': true,
       },
     ];

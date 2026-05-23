@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../features/auth/screens/login_screen.dart';
 import '../models/booking_model.dart';
 import '../models/caregiver_profile_model.dart';
 import '../services/caregiver_firestore_service.dart';
@@ -9,12 +10,14 @@ class CaregiverDetailScreen extends StatefulWidget {
   final CaregiverProfileModel caregiver;
   final String familyId;
   final String familyName;
+  final bool isGuest;
 
   const CaregiverDetailScreen({
     super.key,
     required this.caregiver,
     required this.familyId,
     required this.familyName,
+    this.isGuest = false,
   });
 
   @override
@@ -167,43 +170,34 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
                     spacing: 10,
                     runSpacing: 8,
                     children: [
-                      _infoBadge(
-                          Icons.work_outline, c.specialization, AppColors.primary),
+                      _infoBadge(Icons.work_outline, c.specialization, AppColors.primary),
                       _infoBadge(Icons.star_rounded,
                           '${c.rating} (${c.totalReviews} reviews)',
                           const Color(0xFFFFC107)),
-                      _infoBadge(
-                          Icons.payments_outlined,
+                      _infoBadge(Icons.payments_outlined,
                           'Rp ${(c.pricePerHour / 1000).toStringAsFixed(0)}k/jam',
                           AppColors.accent),
+                      if (c.area.isNotEmpty)
+                        _infoBadge(Icons.location_on_outlined, c.area, AppColors.textSecondary),
                     ],
                   ),
                   const SizedBox(height: 20),
 
                   // Bio
-                  const Text('About',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                  const Text('About', style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const SizedBox(height: 8),
-                  Text(c.bio,
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, height: 1.5)),
+                  Text(c.bio, style: const TextStyle(color: AppColors.textSecondary, height: 1.5)),
                   const SizedBox(height: 28),
 
                   const Divider(color: AppColors.border),
                   const SizedBox(height: 20),
 
                   // Booking form
-                  const Text('Book Appointment',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                  const Text('Book Appointment', style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const SizedBox(height: 16),
 
-                  // Date picker
                   _dateTimeTile(
                     icon: Icons.calendar_today_outlined,
                     label: 'Date',
@@ -215,7 +209,6 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Time picker
                   _dateTimeTile(
                     icon: Icons.access_time_rounded,
                     label: 'Time',
@@ -227,7 +220,6 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Notes
                   TextField(
                     controller: _notesCtrl,
                     maxLines: 3,
@@ -243,8 +235,7 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
                   ),
                   const SizedBox(height: 28),
 
-                  // My bookings section
-                  _buildMyBookings(),
+                  if (!widget.isGuest) _buildMyBookings(),
                 ],
               ),
             ),
@@ -254,17 +245,56 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         child: ElevatedButton.icon(
-          onPressed: _isLoading ? null : _submitBooking,
+          onPressed: _isLoading
+              ? null
+              : () {
+                  if (widget.isGuest) {
+                    // Show login prompt bottom sheet
+                    showModalBottomSheet(
+                      context: context,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      builder: (_) => Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(width: 40, height: 4,
+                                decoration: BoxDecoration(color: AppColors.border,
+                                    borderRadius: BorderRadius.circular(2))),
+                            const SizedBox(height: 20),
+                            const Icon(Icons.lock_outline, size: 40, color: AppColors.primary),
+                            const SizedBox(height: 12),
+                            const Text('Masuk untuk Memesan', style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                            const SizedBox(height: 8),
+                            const Text('Kamu perlu masuk dulu untuk membuat booking',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: AppColors.textSecondary)),
+                            const SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Navigator.push(context,
+                                    MaterialPageRoute(builder: (_) => const LoginScreen()));
+                              },
+                              child: const Text('Masuk / Daftar'),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                        ),
+                      ),
+                    );
+                  } else {
+                    _submitBooking();
+                  }
+                },
           icon: _isLoading
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child:
-                      CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                )
-              : const Icon(Icons.check_circle_outline),
-          label:
-              Text(_isLoading ? 'Submitting...' : 'Instant Book'),
+              ? const SizedBox(width: 18, height: 18,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : Icon(widget.isGuest ? Icons.login : Icons.check_circle_outline),
+          label: Text(_isLoading ? 'Submitting...' : widget.isGuest ? 'Masuk untuk Memesan' : 'Instant Book'),
         ),
       ),
     );

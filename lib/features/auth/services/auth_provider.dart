@@ -3,11 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 
-enum UserRole { family, caregiver, hospital, pharmacy }
+enum UserRole { admin, user, caregiver, hospital, pharmacy }
 
 class AuthProvider extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   User? _currentUser;
   UserRole? _userRole;
@@ -16,16 +16,16 @@ class AuthProvider extends ChangeNotifier {
   User? get currentUser => _currentUser;
   UserRole? get userRole => _userRole;
   bool get isLoading => _isLoading;
+  bool get isLoggedIn => _currentUser != null;
 
   AuthProvider() {
-    // Listen to auth state changes on startup
     _auth.authStateChanges().listen(_onAuthStateChanged);
   }
 
   Future<void> _onAuthStateChanged(User? user) async {
     _currentUser = user;
     if (user != null) {
-      await _fetchUserRole(user.uid);
+      await _fetchOrCreateUserRole(user);
     } else {
       _userRole = null;
     }
@@ -33,47 +33,77 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _fetchUserRole(String uid) async {
+  Future<void> _fetchOrCreateUserRole(User user) async {
     try {
-      final doc = await _firestore.collection('users').doc(uid).get();
+      final doc = await _db.collection('users').doc(user.uid).get();
       if (doc.exists) {
-        final roleStr = doc.data()?['role'] as String?;
-        _userRole = _parseRole(roleStr);
+        _userRole = _parseRole(doc.data()?['role']);
+      } else if (user.email == 'admin@mail.com') {
+        // Auto-assign admin role on first login
+        await _db.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'name': 'Super Admin',
+          'email': user.email,
+          'role': 'admin',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        _userRole = UserRole.admin;
+      } else {
+        _userRole = UserRole.user;
       }
     } catch (e) {
-      debugPrint('Error fetching user role: $e');
+      debugPrint('Error fetching role: $e');
+      _userRole = UserRole.user;
     }
   }
 
   UserRole _parseRole(String? role) {
     switch (role) {
-      case 'caregiver':
-        return UserRole.caregiver;
-      case 'hospital':
-        return UserRole.hospital;
-      case 'pharmacy':
-        return UserRole.pharmacy;
-      default:
-        return UserRole.family;
+      case 'admin':     return UserRole.admin;
+      case 'caregiver': return UserRole.caregiver;
+      case 'hospital':  return UserRole.hospital;
+      case 'pharmacy':  return UserRole.pharmacy;
+      default:          return UserRole.user;
     }
   }
 
-  /// Register a new user and write their role to Firestore
-  Future<String?> register({
+  /// Register regular user
+  Future<String?> registerUser({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final cred = await _auth.createUserWithEmailAndPassword(
+          email: email, password: password);
+      await _db.collection('users').doc(cred.user!.uid).set(UserModel(
+        uid: cred.user!.uid,
+        name: name,
+        email: email,
+        role: 'user',
+        createdAt: DateTime.now(),
+      ).toMap());
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return e.message ?? 'Registration failed';
+    }
+  }
+
+  /// Register mitra (caregiver / hospital / pharmacy)
+  Future<String?> registerMitra({
     required String name,
     required String email,
     required String password,
     required String role,
+    Map<String, dynamic>? mitraProfile,
   }) async {
     try {
-      final credential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      final uid = credential.user!.uid;
+      final cred = await _auth.createUserWithEmailAndPassword(
+          email: email, password: password);
+      final uid = cred.user!.uid;
 
-      // Write user document to Firestore
-      await _firestore.collection('users').doc(uid).set(UserModel(
+      // Write user doc
+      await _db.collection('users').doc(uid).set(UserModel(
         uid: uid,
         name: name,
         email: email,
@@ -81,20 +111,30 @@ class AuthProvider extends ChangeNotifier {
         createdAt: DateTime.now(),
       ).toMap());
 
-      return null; // null = success
+      // Write caregiver profile doc if role is caregiver
+      if (role == 'caregiver' && mitraProfile != null) {
+        await _db.collection('caregivers').doc(uid).set({
+          'name': name,
+          'photoUrl': '',
+          'isAvailable': true,
+          'rating': 0.0,
+          'totalReviews': 0,
+          ...mitraProfile,
+        });
+      }
+      return null;
     } on FirebaseAuthException catch (e) {
       return e.message ?? 'Registration failed';
     }
   }
 
-  /// Login with email & password
   Future<String?> login({
     required String email,
     required String password,
   }) async {
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
-      return null; // null = success
+      return null;
     } on FirebaseAuthException catch (e) {
       return e.message ?? 'Login failed';
     }

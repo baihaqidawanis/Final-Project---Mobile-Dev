@@ -4,7 +4,8 @@ import 'firebase_options.dart';
 import 'package:provider/provider.dart';
 import 'core/constants/app_theme.dart';
 import 'features/auth/services/auth_provider.dart';
-import 'features/auth/screens/login_screen.dart';
+import 'features/home/screens/home_screen.dart';
+import 'features/admin/screens/admin_dashboard_screen.dart';
 import 'features/dashboard/screens/role_router_scaffold.dart';
 
 void main() async {
@@ -34,7 +35,6 @@ class HealinkApp extends StatelessWidget {
   }
 }
 
-/// AppGate: decides whether to show Login or the Role Router
 class AppGate extends StatelessWidget {
   const AppGate({super.key});
 
@@ -48,10 +48,21 @@ class AppGate extends StatelessWidget {
       );
     }
 
-    if (auth.currentUser == null) {
-      return const LoginScreen();
-    }
+    // Not logged in → show HomeScreen as guest
+    if (!auth.isLoggedIn) return const HomeScreen();
 
-    return RoleRouterScaffold(userRole: auth.userRole!);
+    // Logged in → route by role
+    switch (auth.userRole) {
+      case UserRole.admin:
+        return const AdminDashboardScreen();
+      case UserRole.user:
+        return const HomeScreen();
+      case UserRole.caregiver:
+      case UserRole.hospital:
+      case UserRole.pharmacy:
+        return RoleRouterScaffold(userRole: auth.userRole!);
+      default:
+        return const HomeScreen();
+    }
   }
 }

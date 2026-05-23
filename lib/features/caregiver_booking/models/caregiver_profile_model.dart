@@ -9,6 +9,7 @@ class CaregiverProfileModel {
   final int totalReviews;
   final String photoUrl;
   final String bio;
+  final String area;
   final bool isAvailable;
 
   const CaregiverProfileModel({
@@ -20,6 +21,7 @@ class CaregiverProfileModel {
     required this.totalReviews,
     required this.photoUrl,
     required this.bio,
+    required this.area,
     required this.isAvailable,
   });
 
@@ -35,6 +37,7 @@ class CaregiverProfileModel {
       totalReviews: data['totalReviews'] ?? 0,
       photoUrl: data['photoUrl'] ?? '',
       bio: data['bio'] ?? '',
+      area: data['area'] ?? '',
       isAvailable: data['isAvailable'] ?? true,
     );
   }
@@ -48,6 +51,7 @@ class CaregiverProfileModel {
       'totalReviews': totalReviews,
       'photoUrl': photoUrl,
       'bio': bio,
+      'area': area,
       'isAvailable': isAvailable,
     };
   }
