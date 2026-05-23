@@ -137,4 +137,4 @@ Lihat [prd.md](./prd.md) untuk CRUD mapping, database schema, sprint schedule, d
 ## ⚠️ Keamanan
 
 `firebase_options.dart` dan `google-services.json` **tidak ada di repo ini** (di `.gitignore`).
-Minta file tersebut dari Student A via DM/WA untuk setup lokal.
+Minta file ke haqi via DM/WA untuk setup lokal.
