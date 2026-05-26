@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../auth/services/auth_provider.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../caregiver_booking/screens/caregiver_list_screen.dart';
+import '../../pharmacy_delivery/screens/pharmacy_list_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -147,7 +148,8 @@ class HomeScreen extends StatelessWidget {
                     icon: Icons.medication_rounded,
                     label: 'Farmasi',
                     color: const Color(0xFF7B5EA7),
-                    onTap: () => _showComingSoon(context, 'Farmasi'),
+                    onTap: () => Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const PharmacyListScreen())),
                   ),
                 ]),
               ),
