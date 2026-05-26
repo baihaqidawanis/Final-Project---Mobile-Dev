@@ -122,6 +122,21 @@ class AuthProvider extends ChangeNotifier {
           ...mitraProfile,
         });
       }
+
+      // Write pharmacy profile doc if role is pharmacy
+      if (role == 'pharmacy') {
+        await _db.collection('pharmacies').doc(uid).set({
+          'name': name,
+          'address': '',
+          'area': '',
+          'phone': '',
+          'openHours': '08:00 - 21:00',
+          'photoUrl': '',
+          'isOpen': true,
+          'rating': 0.0,
+          'totalReviews': 0,
+        });
+      }
       return null;
     } on FirebaseAuthException catch (e) {
       return e.message ?? 'Registration failed';
