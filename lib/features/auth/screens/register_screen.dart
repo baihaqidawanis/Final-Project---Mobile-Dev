@@ -43,12 +43,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     final auth = context.read<AuthProvider>();
-    final error = await auth.register(
-      name: _nameCtrl.text.trim(),
-      email: _emailCtrl.text.trim(),
-      password: _passwordCtrl.text.trim(),
-      role: _selectedRole,
-    );
+    String? error;
+    if (_selectedRole == 'user') {
+      error = await auth.registerUser(
+        name: _nameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        password: _passwordCtrl.text.trim(),
+      );
+    } else {
+      error = await auth.registerMitra(
+        name: _nameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        password: _passwordCtrl.text.trim(),
+        role: _selectedRole,
+      );
+    }
 
     if (mounted) {
       setState(() {
