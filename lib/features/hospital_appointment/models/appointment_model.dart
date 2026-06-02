@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class AppointmentModel {
   final String appointmentId;
   final String familyId;
@@ -18,6 +20,18 @@ class AppointmentModel {
   factory AppointmentModel.fromMap(Map<String, dynamic> data, String documentId) {
     return AppointmentModel(
       appointmentId: documentId,
+      familyId: data['familyId'] ?? '',
+      hospitalId: data['hospitalId'] ?? '',
+      dateString: data['dateString'] ?? '',
+      timeSlot: data['timeSlot'] ?? '',
+      status: data['status'] ?? 'pending',
+    );
+  }
+
+  factory AppointmentModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return AppointmentModel(
+      appointmentId: doc.id,
       familyId: data['familyId'] ?? '',
       hospitalId: data['hospitalId'] ?? '',
       dateString: data['dateString'] ?? '',
