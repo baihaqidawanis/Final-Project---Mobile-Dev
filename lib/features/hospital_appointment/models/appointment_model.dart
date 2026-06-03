@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+=======
+>>>>>>> 57f8f58fbb86dfec65a77aaceacc8e88e9a72d9b
 class AppointmentModel {
   final String appointmentId;
   final String familyId;
@@ -28,6 +31,7 @@ class AppointmentModel {
     );
   }
 
+<<<<<<< HEAD
   factory AppointmentModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return AppointmentModel(
@@ -40,6 +44,8 @@ class AppointmentModel {
     );
   }
 
+=======
+>>>>>>> 57f8f58fbb86dfec65a77aaceacc8e88e9a72d9b
   Map<String, dynamic> toMap() {
     return {
       'familyId': familyId,
