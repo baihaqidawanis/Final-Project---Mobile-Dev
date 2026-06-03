@@ -149,7 +149,7 @@ class _PharmacyOrderIntakeScreenState extends State<PharmacyOrderIntakeScreen>
             .toList();
         final active = orders
             .where((o) =>
-                o.status == PharmacyOrderStatus.processing ||
+                o.status == PharmacyOrderStatus.accepted ||
                 o.status == PharmacyOrderStatus.shipped)
             .toList();
         final done = orders
@@ -167,7 +167,7 @@ class _PharmacyOrderIntakeScreenState extends State<PharmacyOrderIntakeScreen>
               const SizedBox(height: 8),
             ],
             if (active.isNotEmpty) ...[
-              _sectionHeader('Sedang Diproses (${active.length})'),
+              _sectionHeader('Dikemas & Pengiriman (${active.length})'),
               ...active.map((o) => _orderCard(o)),
               const SizedBox(height: 8),
             ],
@@ -204,9 +204,9 @@ class _PharmacyOrderIntakeScreenState extends State<PharmacyOrderIntakeScreen>
         statusColor = AppColors.pending;
         statusLabel = 'Menunggu';
         break;
-      case PharmacyOrderStatus.processing:
+      case PharmacyOrderStatus.accepted:
         statusColor = AppColors.accepted;
-        statusLabel = 'Diproses';
+        statusLabel = 'Dikemas';
         break;
       case PharmacyOrderStatus.shipped:
         statusColor = const Color(0xFF2196F3);
@@ -344,14 +344,14 @@ class _PharmacyOrderIntakeScreenState extends State<PharmacyOrderIntakeScreen>
                         borderRadius: BorderRadius.circular(10)),
                   ),
                   onPressed: () => _service.updateOrderStatus(
-                      o.orderId, PharmacyOrderStatus.processing),
-                  child: const Text('Proses'),
+                      o.orderId, PharmacyOrderStatus.accepted),
+                  child: const Text('Terima & Kemas'),
                 ),
               ),
             ]),
           ],
 
-          if (o.status == PharmacyOrderStatus.processing) ...[
+          if (o.status == PharmacyOrderStatus.accepted) ...[
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
@@ -365,27 +365,88 @@ class _PharmacyOrderIntakeScreenState extends State<PharmacyOrderIntakeScreen>
                 onPressed: () => _service.updateOrderStatus(
                     o.orderId, PharmacyOrderStatus.shipped),
                 icon: const Icon(Icons.local_shipping_outlined),
-                label: const Text('Kirim'),
+                label: const Text('Kirim Pesanan'),
               ),
             ),
           ],
 
           if (o.status == PharmacyOrderStatus.shipped) ...[
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accepted,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () => _service.updateOrderStatus(
-                    o.orderId, PharmacyOrderStatus.delivered),
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Tandai Terkirim'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2196F3).withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: const Color(0xFF2196F3).withValues(alpha: 0.25)),
               ),
+              child: const Row(children: [
+                Icon(Icons.schedule, size: 15, color: Color(0xFF2196F3)),
+                SizedBox(width: 8),
+                Text('Menunggu konfirmasi penerimaan dari customer',
+                    style: TextStyle(
+                        fontSize: 12, color: Color(0xFF2196F3))),
+              ]),
+            ),
+          ],
+
+          if (o.status == PharmacyOrderStatus.delivered) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.accepted.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: AppColors.accepted.withValues(alpha: 0.2)),
+              ),
+              child: o.rating != null
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          const Icon(Icons.star,
+                              size: 14, color: Color(0xFFFFC107)),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Rating: ${o.rating!.toStringAsFixed(0)}/5',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary),
+                          ),
+                          const Spacer(),
+                          Row(
+                            children: List.generate(
+                              5,
+                              (i) => Icon(
+                                i < o.rating!.round()
+                                    ? Icons.star
+                                    : Icons.star_border,
+                                size: 14,
+                                color: const Color(0xFFFFC107),
+                              ),
+                            ),
+                          ),
+                        ]),
+                        if (o.review != null && o.review!.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text('"${o.review}"',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                  fontStyle: FontStyle.italic)),
+                        ],
+                      ],
+                    )
+                  : const Row(children: [
+                      Icon(Icons.check_circle,
+                          size: 14, color: AppColors.accepted),
+                      SizedBox(width: 8),
+                      Text('Selesai — customer tidak memberi rating',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary)),
+                    ]),
             ),
           ],
         ],

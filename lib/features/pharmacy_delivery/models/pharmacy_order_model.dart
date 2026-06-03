@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum PharmacyOrderStatus { pending, processing, shipped, delivered, cancelled }
+// pending → accepted (apotek terima & kemas) → shipped (dikirim)
+// → delivered (customer konfirmasi) | cancelled
+enum PharmacyOrderStatus { pending, accepted, shipped, delivered, cancelled }
 
 class OrderItem {
   final String medicineId;
@@ -42,6 +44,8 @@ class PharmacyOrderModel {
   final String notes;
   final PharmacyOrderStatus status;
   final DateTime createdAt;
+  final double? rating;
+  final String? review;
 
   const PharmacyOrderModel({
     required this.orderId,
@@ -55,12 +59,15 @@ class PharmacyOrderModel {
     required this.notes,
     required this.status,
     required this.createdAt,
+    this.rating,
+    this.review,
   });
 
   static PharmacyOrderStatus _parseStatus(String? s) {
     switch (s) {
-      case 'processing':
-        return PharmacyOrderStatus.processing;
+      case 'accepted':
+      case 'processing': // backward compat
+        return PharmacyOrderStatus.accepted;
       case 'shipped':
         return PharmacyOrderStatus.shipped;
       case 'delivered':
@@ -76,8 +83,8 @@ class PharmacyOrderModel {
     switch (s) {
       case PharmacyOrderStatus.pending:
         return 'pending';
-      case PharmacyOrderStatus.processing:
-        return 'processing';
+      case PharmacyOrderStatus.accepted:
+        return 'accepted';
       case PharmacyOrderStatus.shipped:
         return 'shipped';
       case PharmacyOrderStatus.delivered:
@@ -106,6 +113,10 @@ class PharmacyOrderModel {
       status: _parseStatus(data['status']),
       createdAt:
           (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      rating: data['rating'] != null
+          ? (data['rating'] as num).toDouble()
+          : null,
+      review: data['review'] as String?,
     );
   }
 
@@ -120,5 +131,7 @@ class PharmacyOrderModel {
         'notes': notes,
         'status': statusToString(status),
         'createdAt': Timestamp.fromDate(createdAt),
+        if (rating != null) 'rating': rating,
+        if (review != null) 'review': review,
       };
 }
