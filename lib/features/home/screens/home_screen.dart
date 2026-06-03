@@ -6,6 +6,8 @@ import '../../auth/screens/login_screen.dart';
 import '../../caregiver_booking/screens/caregiver_list_screen.dart';
 import '../../pharmacy_delivery/screens/pharmacy_list_screen.dart';
 
+import '../../hospital_appointment/screens/family_hospital_scheduler_screen.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -30,7 +32,7 @@ class HomeScreen extends StatelessWidget {
                     end: Alignment.bottomRight,
                     colors: [
                       AppColors.primary,
-                      AppColors.primary.withOpacity(0.8),
+                      AppColors.primary.withValues(alpha: 0.8),
                     ],
                   ),
                   borderRadius: const BorderRadius.only(
@@ -46,7 +48,7 @@ class HomeScreen extends StatelessWidget {
                         Container(
                           width: 36, height: 36,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(Icons.favorite, color: Colors.white, size: 20),
@@ -63,7 +65,7 @@ class HomeScreen extends StatelessWidget {
                       if (!isLoggedIn)
                         TextButton(
                           style: TextButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.2),
+                            backgroundColor: Colors.white.withValues(alpha: 0.2),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                           ),
@@ -76,7 +78,7 @@ class HomeScreen extends StatelessWidget {
                         PopupMenuButton(
                           child: CircleAvatar(
                             radius: 18,
-                            backgroundColor: Colors.white.withOpacity(0.25),
+                            backgroundColor: Colors.white.withValues(alpha: 0.25),
                             child: Text(
                               (auth.currentUser?.email ?? 'U')[0].toUpperCase(),
                               style: const TextStyle(
@@ -108,7 +110,7 @@ class HomeScreen extends StatelessWidget {
                           ? 'Selamat datang kembali, ${auth.currentUser?.email?.split('@').first ?? ''} 👋'
                           : 'Pesan caregiver, jadwalkan klinik, antar obat ke rumah',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.85),
+                        color: Colors.white.withValues(alpha: 0.85),
                         fontSize: 13,
                         height: 1.4,
                       ),
@@ -141,7 +143,8 @@ class HomeScreen extends StatelessWidget {
                     icon: Icons.local_hospital_rounded,
                     label: 'Rumah Sakit',
                     color: const Color(0xFF4A90E2),
-                    onTap: () => _showComingSoon(context, 'Rumah Sakit'),
+                    onTap: () => Navigator.push(context,
+                        MaterialPageRoute(builder: (_) => const FamilyHospitalSchedulerScreen())),
                   ),
                   const SizedBox(width: 12),
                   _ServiceCard(
@@ -201,9 +204,9 @@ class HomeScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [AppColors.primary.withOpacity(0.08), AppColors.primary.withOpacity(0.04)]),
+                        colors: [AppColors.primary.withValues(alpha: 0.08), AppColors.primary.withValues(alpha: 0.04)]),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       const Text('Bergabung sebagai Mitra 🤝', style: TextStyle(
@@ -285,14 +288,14 @@ class _ServiceCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.border),
             boxShadow: [BoxShadow(
-              color: color.withOpacity(0.08),
+              color: color.withValues(alpha: 0.08),
               blurRadius: 12, offset: const Offset(0, 4))],
           ),
           child: Column(children: [
             Container(
               width: 52, height: 52,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: color, size: 26),
@@ -330,7 +333,7 @@ class _HowItWorksStep extends StatelessWidget {
       Column(children: [
         Container(
           width: 40, height: 40,
-          decoration: BoxDecoration(color: color.withOpacity(0.12), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
           child: Center(child: Text(step, style: TextStyle(
             fontSize: 16, fontWeight: FontWeight.w800, color: color))),
         ),

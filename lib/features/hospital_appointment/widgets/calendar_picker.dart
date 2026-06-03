@@ -51,14 +51,14 @@ class CalendarPicker extends StatelessWidget {
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: AppColors.primary.withOpacity(0.3),
+                          color: AppColors.primary.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
                       ]
                     : [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
+                          color: Colors.black.withValues(alpha: 0.02),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -72,7 +72,7 @@ class CalendarPicker extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: isSelected ? Colors.white.withOpacity(0.8) : AppColors.textSecondary,
+                      color: isSelected ? Colors.white.withValues(alpha: 0.8) : AppColors.textSecondary,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -91,7 +91,7 @@ class CalendarPicker extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
-                      color: isSelected ? Colors.white.withOpacity(0.8) : AppColors.textSecondary,
+                      color: isSelected ? Colors.white.withValues(alpha: 0.8) : AppColors.textSecondary,
                     ),
                   ),
                 ],
