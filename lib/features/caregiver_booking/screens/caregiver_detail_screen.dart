@@ -70,7 +70,10 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
   Future<void> _submitBooking() async {
     if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select date and time')),
+        const SnackBar(
+          content: Text('⚠️ Pilih tanggal dan waktu terlebih dahulu'),
+          backgroundColor: AppColors.pending,
+        ),
       );
       return;
     }
@@ -106,8 +109,9 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✅ Booking submitted successfully!'),
+          content: Text('✅ Booking berhasil dikirim! Tunggu konfirmasi caregiver.'),
           backgroundColor: AppColors.accepted,
+          duration: Duration(seconds: 4),
         ),
       );
     }
@@ -136,7 +140,7 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                         border:
                             Border.all(color: Colors.white, width: 3),
@@ -184,25 +188,28 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
                   const SizedBox(height: 20),
 
                   // Bio
-                  const Text('About', style: TextStyle(
+                  const Text('Tentang Caregiver', style: TextStyle(
                       fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const SizedBox(height: 8),
-                  Text(c.bio, style: const TextStyle(color: AppColors.textSecondary, height: 1.5)),
+                  Text(
+                    c.bio.isNotEmpty ? c.bio : 'Belum ada deskripsi.',
+                    style: const TextStyle(color: AppColors.textSecondary, height: 1.6),
+                  ),
                   const SizedBox(height: 28),
 
                   const Divider(color: AppColors.border),
                   const SizedBox(height: 20),
 
                   // Booking form
-                  const Text('Book Appointment', style: TextStyle(
+                  const Text('Buat Booking', style: TextStyle(
                       fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const SizedBox(height: 16),
 
                   _dateTimeTile(
                     icon: Icons.calendar_today_outlined,
-                    label: 'Date',
+                    label: 'Tanggal',
                     value: _selectedDate == null
-                        ? 'Select date'
+                        ? 'Pilih tanggal'
                         : '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
                     onTap: _pickDate,
                     filled: _selectedDate != null,
@@ -211,9 +218,9 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
 
                   _dateTimeTile(
                     icon: Icons.access_time_rounded,
-                    label: 'Time',
+                    label: 'Jam Mulai',
                     value: _selectedTime == null
-                        ? 'Select time'
+                        ? 'Pilih waktu'
                         : _selectedTime!.format(context),
                     onTap: _pickTime,
                     filled: _selectedTime != null,
@@ -224,8 +231,8 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
                     controller: _notesCtrl,
                     maxLines: 3,
                     decoration: const InputDecoration(
-                      labelText: 'Notes (optional)',
-                      hintText: 'Any special requirements...',
+                      labelText: 'Catatan Khusus (opsional)',
+                      hintText: 'Kebutuhan khusus, kondisi pasien, dll...',
                       prefixIcon: Padding(
                         padding: EdgeInsets.only(bottom: 40),
                         child: Icon(Icons.note_outlined),
@@ -294,7 +301,7 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
               ? const SizedBox(width: 18, height: 18,
                   child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
               : Icon(widget.isGuest ? Icons.login : Icons.check_circle_outline),
-          label: Text(_isLoading ? 'Submitting...' : widget.isGuest ? 'Masuk untuk Memesan' : 'Instant Book'),
+          label: Text(_isLoading ? 'Mengirim...' : widget.isGuest ? 'Masuk untuk Memesan' : 'Kirim Booking'),
         ),
       ),
     );
@@ -304,7 +311,7 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -332,7 +339,7 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: filled ? AppColors.primary.withOpacity(0.06) : Colors.white,
+          color: filled ? AppColors.primary.withValues(alpha: 0.06) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: filled ? AppColors.primary : AppColors.border,
@@ -384,7 +391,7 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
           children: [
             const Divider(color: AppColors.border),
             const SizedBox(height: 16),
-            const Text('Your Bookings with this Caregiver',
+            const Text('Booking Kamu dengan Caregiver Ini',
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,

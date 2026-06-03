@@ -11,12 +11,16 @@ class AuthProvider extends ChangeNotifier {
 
   User? _currentUser;
   UserRole? _userRole;
+  String _userName = '';
   bool _isLoading = true;
 
   User? get currentUser => _currentUser;
   UserRole? get userRole => _userRole;
   bool get isLoading => _isLoading;
   bool get isLoggedIn => _currentUser != null;
+
+  /// Display name fetched from Firestore /users/{uid}.name
+  String get userName => _userName;
 
   AuthProvider() {
     _auth.authStateChanges().listen(_onAuthStateChanged);
@@ -28,6 +32,7 @@ class AuthProvider extends ChangeNotifier {
       await _fetchOrCreateUserRole(user);
     } else {
       _userRole = null;
+      _userName = '';
     }
     _isLoading = false;
     notifyListeners();
@@ -38,6 +43,7 @@ class AuthProvider extends ChangeNotifier {
       final doc = await _db.collection('users').doc(user.uid).get();
       if (doc.exists) {
         _userRole = _parseRole(doc.data()?['role']);
+        _userName = doc.data()?['name'] ?? user.email ?? '';
       } else if (user.email == 'admin@mail.com') {
         // Auto-assign admin role on first login
         await _db.collection('users').doc(user.uid).set({
@@ -48,12 +54,15 @@ class AuthProvider extends ChangeNotifier {
           'createdAt': FieldValue.serverTimestamp(),
         });
         _userRole = UserRole.admin;
+        _userName = 'Super Admin';
       } else {
         _userRole = UserRole.user;
+        _userName = user.email ?? '';
       }
     } catch (e) {
       debugPrint('Error fetching role: $e');
       _userRole = UserRole.user;
+      _userName = user.email ?? '';
     }
   }
 

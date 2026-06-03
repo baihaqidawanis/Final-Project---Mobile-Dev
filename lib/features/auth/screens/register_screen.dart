@@ -22,9 +22,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final List<Map<String, dynamic>> _roles = [
     {'value': 'family', 'label': 'Family / Patient', 'icon': Icons.family_restroom},
-    {'value': 'caregiver', 'label': 'Caregiver', 'icon': Icons.medical_services_outlined},
-    {'value': 'hospital', 'label': 'Hospital Admin', 'icon': Icons.local_hospital_outlined},
-    {'value': 'pharmacy', 'label': 'Pharmacy', 'icon': Icons.medication_outlined},
+    {'value': 'caregiver', 'label': 'Mitra Caregiver', 'icon': Icons.medical_services_outlined},
+    {'value': 'hospital', 'label': 'Mitra Rumah Sakit', 'icon': Icons.local_hospital_outlined},
+    {'value': 'pharmacy', 'label': 'Mitra Farmasi', 'icon': Icons.medication_outlined},
   ];
 
   @override
@@ -43,12 +43,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     final auth = context.read<AuthProvider>();
-    final error = await auth.register(
-      name: _nameCtrl.text.trim(),
-      email: _emailCtrl.text.trim(),
-      password: _passwordCtrl.text.trim(),
-      role: _selectedRole,
-    );
+    // Route to the correct registration method based on selected role
+    final String? error;
+    if (_selectedRole == 'family') {
+      error = await auth.registerUser(
+        name: _nameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        password: _passwordCtrl.text.trim(),
+      );
+    } else {
+      error = await auth.registerMitra(
+        name: _nameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        password: _passwordCtrl.text.trim(),
+        role: _selectedRole,
+      );
+    }
 
     if (mounted) {
       setState(() {

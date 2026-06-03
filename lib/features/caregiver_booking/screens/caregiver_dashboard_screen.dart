@@ -10,7 +10,8 @@ class CaregiverDashboardScreen extends StatefulWidget {
   const CaregiverDashboardScreen({super.key});
 
   @override
-  State<CaregiverDashboardScreen> createState() => _CaregiverDashboardScreenState();
+  State<CaregiverDashboardScreen> createState() =>
+      _CaregiverDashboardScreenState();
 }
 
 class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
@@ -26,6 +27,7 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
   final _bioCtrl = TextEditingController();
   bool _isAvailable = true;
   bool _savingProfile = false;
+  bool _profileLoaded = false;
 
   @override
   void initState() {
@@ -57,9 +59,111 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
     if (mounted) {
       setState(() => _savingProfile = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Profil berhasil diperbarui'),
-            backgroundColor: AppColors.accepted),
+        const SnackBar(
+          content: Text('✅ Profil berhasil diperbarui'),
+          backgroundColor: AppColors.accepted,
+        ),
       );
+    }
+  }
+
+  Future<void> _showCompleteDialog(BookingModel b) async {
+    final noteCtrl = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: AppColors.completed),
+            SizedBox(width: 10),
+            Text('Tandai Selesai',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.person_outline,
+                      size: 16, color: AppColors.textSecondary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Klien: ${b.familyName}',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Catatan Klinis',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: noteCtrl,
+              maxLines: 4,
+              decoration: InputDecoration(
+                hintText: 'Kondisi pasien, tindakan yang diberikan...',
+                hintStyle:
+                    const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: AppColors.primary, width: 1.5),
+                ),
+                contentPadding: const EdgeInsets.all(12),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Opsional — akan disimpan sebagai log layanan',
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.completed,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, noteCtrl.text),
+            icon: const Icon(Icons.check, size: 16),
+            label: const Text('Selesaikan'),
+          ),
+        ],
+      ),
+    );
+    noteCtrl.dispose();
+
+    if (result != null) {
+      await _service.completeBookingWithNote(b.bookingId, result);
     }
   }
 
@@ -73,22 +177,91 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: const Text('Dashboard Caregiver'),
+        titleSpacing: 16,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Halo, ${auth.userName.split(' ').first} 👋',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const Text(
+              'Dashboard Caregiver',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout, color: AppColors.textSecondary),
-            onPressed: () => auth.logout(),
+            icon: const Icon(Icons.logout_rounded, color: AppColors.textSecondary),
+            tooltip: 'Keluar',
+            onPressed: () => _confirmLogout(context, auth),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
-          indicatorColor: AppColors.primary,
-          tabs: const [
-            Tab(icon: Icon(Icons.assignment_outlined), text: 'Requests'),
-            Tab(icon: Icon(Icons.person_outline), text: 'Profil Saya'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: StreamBuilder<List<BookingModel>>(
+            stream: _service.getActiveBookingsByCaregiver(uid),
+            builder: (context, snap) {
+              final pendingCount = snap.data
+                      ?.where((b) => b.status == BookingStatus.pending)
+                      .length ??
+                  0;
+
+              return TabBar(
+                controller: _tabController,
+                labelColor: AppColors.primary,
+                unselectedLabelColor: AppColors.textSecondary,
+                indicatorColor: AppColors.primary,
+                indicatorWeight: 3,
+                tabs: [
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.assignment_outlined, size: 18),
+                        const SizedBox(width: 6),
+                        const Text('Requests'),
+                        if (pendingCount > 0) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.pending,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '$pendingCount',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.person_outline, size: 18),
+                        SizedBox(width: 6),
+                        Text('Profil Saya'),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
       body: TabBarView(
@@ -101,50 +274,71 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
     );
   }
 
-  // ── TAB 1: Incoming Requests ─────────────────────────────────────────────
+  void _confirmLogout(BuildContext context, AuthProvider auth) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Keluar?',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        content:
+            const Text('Kamu akan keluar dari akun caregiver ini.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.cancelled),
+            onPressed: () {
+              Navigator.pop(ctx);
+              auth.logout();
+            },
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── TAB 1: Active Requests Only ──────────────────────────────────────────
   Widget _buildRequestsTab(String uid) {
     if (uid.isEmpty) {
       return const Center(child: Text('Silakan login ulang'));
     }
     return StreamBuilder<List<BookingModel>>(
-      stream: _service.getBookingsByCaregiver(uid),
+      stream: _service.getActiveBookingsByCaregiver(uid),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary));
         }
 
         final bookings = snapshot.data ?? [];
 
         if (bookings.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.inbox_outlined, size: 64, color: AppColors.textSecondary),
-                SizedBox(height: 16),
-                Text('Belum ada request masuk', style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-                SizedBox(height: 8),
-                Text('Booking akan muncul di sini', style: TextStyle(color: AppColors.textSecondary)),
-              ],
-            ),
-          );
+          return _buildEmptyRequests();
         }
 
-        final pending = bookings.where((b) => b.status == BookingStatus.pending).toList();
-        final others = bookings.where((b) => b.status != BookingStatus.pending).toList();
+        final pending =
+            bookings.where((b) => b.status == BookingStatus.pending).toList();
+        final accepted =
+            bookings.where((b) => b.status == BookingStatus.accepted).toList();
 
         return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           children: [
             if (pending.isNotEmpty) ...[
-              _sectionHeader('🔔 Request Baru (${pending.length})'),
+              _sectionHeader(
+                  '🔔 Request Baru (${pending.length})', AppColors.pending),
               ...pending.map((b) => _bookingCard(b)),
               const SizedBox(height: 16),
             ],
-            if (others.isNotEmpty) ...[
-              _sectionHeader('Riwayat'),
-              ...others.map((b) => _bookingCard(b)),
+            if (accepted.isNotEmpty) ...[
+              _sectionHeader(
+                  '🟢 Sedang Berjalan (${accepted.length})', AppColors.accepted),
+              ...accepted.map((b) => _bookingCard(b)),
             ],
           ],
         );
@@ -152,15 +346,56 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
     );
   }
 
+  Widget _buildEmptyRequests() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight.withValues(alpha: 0.5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.inbox_outlined,
+                size: 52,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Tidak ada request aktif',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Request booking dari keluarga akan\nmuncul di sini secara real-time',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── TAB 2: Edit Profile ──────────────────────────────────────────────────
   Widget _buildProfileTab(String uid) {
     return StreamBuilder<Map<String, dynamic>?>(
-      stream: Stream.fromFuture(
-        FirestoreProfileFuture.getProfile(_service, uid),
-      ),
+      stream: _service.getCaregiverProfileStream(uid),
       builder: (context, snapshot) {
-        // Pre-fill controllers if data arrived and fields are empty
-        if (snapshot.hasData && _nameCtrl.text.isEmpty) {
+        if (snapshot.hasData && !_profileLoaded) {
           final data = snapshot.data;
           if (data != null) {
             _nameCtrl.text = data['name'] ?? '';
@@ -169,6 +404,7 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
             _areaCtrl.text = data['area'] ?? '';
             _bioCtrl.text = data['bio'] ?? '';
             _isAvailable = data['isAvailable'] ?? true;
+            _profileLoaded = true;
           }
         }
 
@@ -177,40 +413,78 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar placeholder
+              // Avatar
               Center(
                 child: Stack(
                   children: [
-                    CircleAvatar(
-                      radius: 48,
-                      backgroundColor: AppColors.primaryLight,
-                      child: Text(
-                        _nameCtrl.text.isNotEmpty ? _nameCtrl.text[0].toUpperCase() : 'C',
-                        style: const TextStyle(
-                          fontSize: 36, fontWeight: FontWeight.w700, color: AppColors.primary),
+                    Container(
+                      width: 96,
+                      height: 96,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primary.withValues(alpha: 0.7),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          _nameCtrl.text.isNotEmpty
+                              ? _nameCtrl.text[0].toUpperCase()
+                              : 'C',
+                          style: const TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
                     Positioned(
-                      bottom: 0, right: 0,
+                      bottom: 2,
+                      right: 2,
                       child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary, shape: BoxShape.circle),
-                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                        width: 26,
+                        height: 26,
+                        decoration: const BoxDecoration(
+                          color: AppColors.accepted,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.verified_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               const Center(
-                child: Text('Foto profil coming soon',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                child: Text(
+                  'Profil Caregiver',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
               const SizedBox(height: 28),
 
-              const Text('Informasi Profil', style: TextStyle(
-                fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              _formLabel('Informasi Profil'),
               const SizedBox(height: 12),
 
               TextFormField(
@@ -226,7 +500,7 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
                 controller: _specializationCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Spesialisasi',
-                  hintText: 'cth: Elderly Care',
+                  hintText: 'cth: Elderly Care, Post-Surgery',
                   prefixIcon: Icon(Icons.work_outline),
                 ),
               ),
@@ -264,27 +538,72 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
                   alignLabelWithHint: true,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
               // Availability toggle
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: _isAvailable
+                        ? AppColors.accepted.withValues(alpha: 0.4)
+                        : AppColors.border,
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.circle, size: 10, color: AppColors.accepted),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text('Tersedia untuk booking',
-                          style: TextStyle(fontWeight: FontWeight.w500)),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _isAvailable
+                            ? AppColors.accepted.withValues(alpha: 0.1)
+                            : AppColors.textSecondary.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isAvailable
+                            ? Icons.wifi_tethering_rounded
+                            : Icons.wifi_tethering_off_rounded,
+                        size: 18,
+                        color: _isAvailable
+                            ? AppColors.accepted
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _isAvailable
+                                ? 'Tersedia untuk Booking'
+                                : 'Tidak Tersedia',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: _isAvailable
+                                  ? AppColors.textPrimary
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                          Text(
+                            _isAvailable
+                                ? 'Profil kamu muncul di daftar pencarian'
+                                : 'Profil kamu disembunyikan sementara',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     Switch(
                       value: _isAvailable,
-                      activeColor: AppColors.primary,
+                      activeThumbColor: AppColors.accepted,
                       onChanged: (v) => setState(() => _isAvailable = v),
                     ),
                   ],
@@ -292,14 +611,28 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
               ),
               const SizedBox(height: 28),
 
-              ElevatedButton.icon(
-                onPressed: _savingProfile ? null : () => _saveProfile(uid),
-                icon: _savingProfile
-                    ? const SizedBox(width: 18, height: 18,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.save_outlined),
-                label: Text(_savingProfile ? 'Menyimpan...' : 'Simpan Profil'),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: _savingProfile ? null : () => _saveProfile(uid),
+                  icon: _savingProfile
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.save_rounded),
+                  label: Text(_savingProfile ? 'Menyimpan...' : 'Simpan Profil',
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600)),
+                ),
               ),
+              const SizedBox(height: 16),
             ],
           ),
         );
@@ -307,116 +640,301 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
     );
   }
 
-  Widget _sectionHeader(String title) {
+  Widget _formLabel(String text) {
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 14,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _sectionHeader(String title, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10, top: 4),
-      child: Text(title, style: const TextStyle(
-        fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 16,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _bookingCard(BookingModel b) {
+    final isPending = b.status == BookingStatus.pending;
+    final isAccepted = b.status == BookingStatus.accepted;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [BoxShadow(
-          color: Colors.black.withOpacity(0.04),
-          blurRadius: 6, offset: const Offset(0, 2))],
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isPending
+              ? AppColors.pending.withValues(alpha: 0.35)
+              : AppColors.accepted.withValues(alpha: 0.25),
+          width: isPending ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (isPending ? AppColors.pending : AppColors.accepted)
+                .withValues(alpha: 0.07),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          CircleAvatar(radius: 20, backgroundColor: AppColors.primaryLight,
-              child: const Icon(Icons.person, color: AppColors.primary, size: 22)),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(b.familyName, style: const TextStyle(
-              fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            Text(b.specialization, style: const TextStyle(
-              fontSize: 12, color: AppColors.textSecondary)),
-          ])),
-          StatusBadge(status: b.status),
-        ]),
-        const SizedBox(height: 12),
-        const Divider(height: 1, color: AppColors.border),
-        const SizedBox(height: 12),
-        _detailRow(Icons.calendar_today_outlined,
-            '${b.dateTime.day}/${b.dateTime.month}/${b.dateTime.year}'),
-        const SizedBox(height: 4),
-        _detailRow(Icons.access_time_rounded,
-            '${b.dateTime.hour.toString().padLeft(2, '0')}:${b.dateTime.minute.toString().padLeft(2, '0')}'),
-        const SizedBox(height: 4),
-        _detailRow(Icons.payments_outlined,
-            'Rp ${(b.pricePerHour / 1000).toStringAsFixed(0)}k/jam'),
-        if (b.notes.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          _detailRow(Icons.note_outlined, b.notes),
-        ],
-
-        if (b.status == BookingStatus.pending) ...[
-          const SizedBox(height: 14),
-          Row(children: [
-            Expanded(
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.cancelled,
-                  side: const BorderSide(color: AppColors.cancelled),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Column(
+        children: [
+          // Card header stripe
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isPending
+                  ? AppColors.pending.withValues(alpha: 0.05)
+                  : AppColors.accepted.withValues(alpha: 0.05),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(18)),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: AppColors.primaryLight,
+                  child: Text(
+                    b.familyName.isNotEmpty ? b.familyName[0].toUpperCase() : 'K',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
                 ),
-                onPressed: () => _service.updateBookingStatus(b.bookingId, BookingStatus.cancelled),
-                child: const Text('Tolak'),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        b.familyName,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        b.specialization,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                StatusBadge(status: b.status),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                onPressed: () => _service.updateBookingStatus(b.bookingId, BookingStatus.accepted),
-                child: const Text('Terima'),
-              ),
-            ),
-          ]),
-        ],
+          ),
 
-        if (b.status == BookingStatus.accepted) ...[
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.completed,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              onPressed: () => _service.updateBookingStatus(b.bookingId, BookingStatus.completed),
-              icon: const Icon(Icons.check_circle_outline),
-              label: const Text('Tandai Selesai'),
+          // Details
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    _chip(Icons.calendar_today_outlined,
+                        '${b.dateTime.day}/${b.dateTime.month}/${b.dateTime.year}'),
+                    const SizedBox(width: 10),
+                    _chip(Icons.access_time_rounded,
+                        '${b.dateTime.hour.toString().padLeft(2, '0')}:${b.dateTime.minute.toString().padLeft(2, '0')}'),
+                    const SizedBox(width: 10),
+                    _chip(Icons.payments_outlined,
+                        'Rp ${_fmt(b.pricePerHour)}/jam'),
+                  ],
+                ),
+                if (b.notes.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.note_outlined,
+                            size: 13, color: AppColors.textSecondary),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            b.notes,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+
+                // Pending: Accept / Decline buttons
+                if (isPending)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.cancelled,
+                            side: const BorderSide(color: AppColors.cancelled),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          onPressed: () => _confirmDecline(b),
+                          icon: const Icon(Icons.close, size: 16),
+                          label: const Text('Tolak',
+                              style: TextStyle(fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          onPressed: () => _service.updateBookingStatus(
+                              b.bookingId, BookingStatus.accepted),
+                          icon: const Icon(Icons.check, size: 16),
+                          label: const Text('Terima',
+                              style: TextStyle(fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                // Accepted: Complete with note
+                if (isAccepted)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.completed,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () => _showCompleteDialog(b),
+                      icon: const Icon(Icons.check_circle_outline, size: 18),
+                      label: const Text('Tandai Selesai',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14)),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
-      ]),
+      ),
     );
   }
 
-  Widget _detailRow(IconData icon, String text) {
-    return Row(children: [
-      Icon(icon, size: 16, color: AppColors.textSecondary),
-      const SizedBox(width: 8),
-      Expanded(child: Text(text,
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary))),
-    ]);
+  void _confirmDecline(BookingModel b) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Tolak Request?',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(
+          'Tolak booking dari ${b.familyName}?',
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.cancelled),
+            onPressed: () {
+              _service.updateBookingStatus(b.bookingId, BookingStatus.cancelled);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Tolak'),
+          ),
+        ],
+      ),
+    );
   }
-}
 
-/// Helper to fetch caregiver profile as a Future for StreamBuilder
-class FirestoreProfileFuture {
-  static Future<Map<String, dynamic>?> getProfile(
-      CaregiverFirestoreService service, String uid) async {
-    if (uid.isEmpty) return null;
-    final db = service.db;
-    final doc = await db.collection('caregivers').doc(uid).get();
-    return doc.data();
+  Widget _chip(IconData icon, String text) {
+    return Expanded(
+      child: Row(
+        children: [
+          Icon(icon, size: 13, color: AppColors.textSecondary),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _fmt(double price) {
+    if (price >= 1000) return '${(price / 1000).toStringAsFixed(0)}k';
+    return price.toStringAsFixed(0);
   }
 }

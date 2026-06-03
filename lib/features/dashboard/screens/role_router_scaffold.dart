@@ -3,11 +3,12 @@ import '../../auth/services/auth_provider.dart';
 
 // 🟦 Student A - Caregiver Booking
 import '../../caregiver_booking/screens/caregiver_dashboard_screen.dart';
+import '../../caregiver_booking/screens/caregiver_history_screen.dart';
 
-// 🟩 Student B - Hospital Appointment (placeholders)
+// 🟩 Student B - Hospital Appointment
 import '../../hospital_appointment/screens/hospital_admin_dashboard_screen.dart';
 
-// 🟥 Student C - Pharmacy Delivery (placeholders)
+// 🟥 Student C - Pharmacy Delivery
 import '../../pharmacy_delivery/screens/pharmacy_order_intake_screen.dart';
 
 /// RoleRouterScaffold is only for MITRA roles:
@@ -28,7 +29,10 @@ class _RoleRouterScaffoldState extends State<RoleRouterScaffold> {
   List<Widget> get _screens {
     switch (widget.userRole) {
       case UserRole.caregiver:
-        return [const CaregiverDashboardScreen()];
+        return const [
+          CaregiverDashboardScreen(),
+          CaregiverHistoryScreen(),
+        ];
       case UserRole.hospital:
         return [const HospitalAdminDashboardScreen()];
       case UserRole.pharmacy:
@@ -46,6 +50,11 @@ class _RoleRouterScaffoldState extends State<RoleRouterScaffold> {
             icon: Icon(Icons.assignment_outlined),
             activeIcon: Icon(Icons.assignment),
             label: 'Requests',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history_rounded),
+            activeIcon: Icon(Icons.history_rounded),
+            label: 'Riwayat',
           ),
         ];
       case UserRole.hospital:
@@ -80,6 +89,10 @@ class _RoleRouterScaffoldState extends State<RoleRouterScaffold> {
           ? BottomNavigationBar(
               currentIndex: _currentIndex,
               onTap: (i) => setState(() => _currentIndex = i),
+              selectedItemColor: const Color(0xFF00B4A6),
+              unselectedItemColor: const Color(0xFF6B7F7E),
+              type: BottomNavigationBarType.fixed,
+              elevation: 12,
               items: _navItems,
             )
           : null,

@@ -182,18 +182,27 @@ class _RoleRouterScaffoldState extends State<RoleRouterScaffold> {
 - **Objective:** Manage on-demand sourcing, tracking, and scheduling for specialized healthcare providers.
 
 - **Functional Workflows:**
-  - **Family Flow:** Browse caregivers through a filtered list view (by price, rating, specialization). Click a profile to view certifications, credentials, and hourly rates. Tap "Instant Book" to initiate a request.
-  - **Caregiver Flow:** View incoming service requests in real time. Features single-tap accept and decline buttons. Once accepted, provide a "Mark as Complete" interface containing clinical log notes.
+  - **Family Flow:** Browse caregivers through a filtered list view with **sort chips** (by price ascending/descending, or rating). Cards display name, specialization, area/location, rating, and price. A **green/red availability dot** shows real-time status. Click a profile to view certifications, bio, and hourly rates. Tap "Kirim Booking" to initiate a request with date, time, and optional notes.
+  - **Caregiver Flow:** View active incoming requests (pending + accepted only) in real time. Dashboard shows a **personalized greeting** with a **badge count** on the Requests tab when new bookings arrive. Confirm-before-decline dialog prevents accidental rejections. Once accepted, tap "Tandai Selesai" to open a clinical log notes dialog. Completed/cancelled bookings are accessible via **dedicated History Screen** (bottom nav tab 2).
 
-- **UX Specification:** Scrollable lists featuring clean card widgets, standard layout structures to minimize native asset load, and prominent status tags.
+- **UX Specification:** Scrollable lists featuring clean card widgets with colored status borders, animated sort chips, shimmer loading skeletons, distinct empty states (no-data vs no-search-results), and prominent status badges with Bahasa Indonesia labels and icons.
 
 - **Module 1 CRUD Operations:**
   | Operation | Description |
   |---|---|
   | **Create** | Family submits a new document within the `/bookings` collection. |
-  | **Read** | Family tracks status updates on ongoing bookings; Caregivers watch a pending request stream. |
-  | **Update** | Caregiver updates the document status (`"pending"` → `"accepted"` → `"completed"` / `"cancelled"`) and writes log comments. |
-  | **Delete** | Family cancels a pending booking before acceptance, removing the document or transitioning status to `"cancelled"`. |
+  | **Read** | Family tracks status updates on ongoing bookings; Caregivers watch an active request stream (pending + accepted only) with a real-time badge count. |
+  | **Update** | Caregiver updates the document status (`"pending"` → `"accepted"` → `"completed"` / `"cancelled"`) and writes clinical log notes via `completeBookingWithNote()`. Caregiver can also update their own profile (name, specialization, price, area, bio, availability toggle). |
+  | **Delete** | Family cancels a pending booking from **My Bookings Screen**, transitioning status to `"cancelled"`. |
+
+- **Extra Features Implemented (Beyond PRD):**
+  - Sort chips on caregiver list (Price Low, Price High, Rating)
+  - Availability ring + dot indicator on caregiver card avatar
+  - `CaregiverHistoryScreen` — dedicated screen for completed/cancelled bookings with summary stats and clinical note display
+  - `clinicalNote` field added to `BookingModel` for history display
+  - Confirm-before-decline dialog on caregiver dashboard
+  - Error state with retry button on caregiver list
+  - Bottom nav bar for caregiver role (Requests + Riwayat), matching PRD nav spec
 
 ---
 
@@ -251,7 +260,7 @@ A single-database design structure inside Cloud Firestore manages user roles, bo
   +-- /users/ {uid} (Document)
   |       |-- name: String
   |       |-- email: String
-  |       |-- role: String ("family" | "caregiver" | "hospital" | "pharmacy")
+  |       |-- role: String ("user" | "admin" | "caregiver" | "hospital" | "pharmacy")
   |       |-- metadata: Map
   |       └-- createdAt: Timestamp
   |

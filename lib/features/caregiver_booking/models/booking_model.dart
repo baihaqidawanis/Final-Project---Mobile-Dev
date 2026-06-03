@@ -12,6 +12,7 @@ class BookingModel {
   final String specialization;
   final double pricePerHour;
   final String notes;
+  final String clinicalNote; // written by caregiver on completion
   final BookingStatus status;
   final DateTime createdAt;
 
@@ -25,6 +26,7 @@ class BookingModel {
     required this.specialization,
     required this.pricePerHour,
     required this.notes,
+    this.clinicalNote = '',
     required this.status,
     required this.createdAt,
   });
@@ -69,6 +71,7 @@ class BookingModel {
       specialization: data['specialization'] ?? '',
       pricePerHour: (data['pricePerHour'] ?? 0).toDouble(),
       notes: data['notes'] ?? '',
+      clinicalNote: data['clinicalNote'] ?? '',
       status: _parseStatus(data['status']),
       createdAt:
           (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),

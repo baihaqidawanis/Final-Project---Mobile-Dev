@@ -9,27 +9,35 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = switch (status) {
-      BookingStatus.pending => ('Pending', AppColors.pending),
-      BookingStatus.accepted => ('Accepted', AppColors.accepted),
-      BookingStatus.completed => ('Completed', AppColors.completed),
-      BookingStatus.cancelled => ('Cancelled', AppColors.cancelled),
+    final (label, color, icon) = switch (status) {
+      BookingStatus.pending   => ('Menunggu',   AppColors.pending,   Icons.hourglass_top_rounded),
+      BookingStatus.accepted  => ('Diterima',   AppColors.accepted,  Icons.check_circle_rounded),
+      BookingStatus.completed => ('Selesai',    AppColors.completed, Icons.verified_rounded),
+      BookingStatus.cancelled => ('Dibatalkan', AppColors.cancelled, Icons.cancel_rounded),
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
       ),
     );
   }
