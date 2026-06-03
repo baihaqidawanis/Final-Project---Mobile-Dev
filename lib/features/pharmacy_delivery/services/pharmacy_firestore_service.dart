@@ -99,4 +99,43 @@ class PharmacyFirestoreService {
       'status': PharmacyOrderModel.statusToString(status),
     });
   }
+
+  // Customer confirms receipt and optionally leaves rating + review.
+  // Updates pharmacy aggregate rating atomically via transaction.
+  Future<void> confirmDelivery(
+    String orderId,
+    String pharmacyId, {
+    double? rating,
+    String? review,
+  }) async {
+    final orderRef = _orders.doc(orderId);
+    final updateData = <String, dynamic>{
+      'status': PharmacyOrderModel.statusToString(PharmacyOrderStatus.delivered),
+    };
+    if (rating != null) updateData['rating'] = rating;
+    if (review != null && review.isNotEmpty) updateData['review'] = review;
+
+    await _db.runTransaction((txn) async {
+      // Firestore rule: ALL reads must happen before any write.
+      Map<String, dynamic>? pharmacyData;
+      final pharmacyRef = _pharmacies.doc(pharmacyId);
+      if (rating != null) {
+        final snap = await txn.get(pharmacyRef);
+        if (snap.exists) pharmacyData = snap.data();
+      }
+
+      // Writes come after all reads.
+      txn.update(orderRef, updateData);
+      if (rating != null && pharmacyData != null) {
+        final currentRating = (pharmacyData['rating'] ?? 0.0).toDouble();
+        final currentTotal = (pharmacyData['totalReviews'] ?? 0) as int;
+        final newTotal = currentTotal + 1;
+        final newRating = (currentRating * currentTotal + rating) / newTotal;
+        txn.update(pharmacyRef, {
+          'rating': double.parse(newRating.toStringAsFixed(1)),
+          'totalReviews': newTotal,
+        });
+      }
+    });
+  }
 }
