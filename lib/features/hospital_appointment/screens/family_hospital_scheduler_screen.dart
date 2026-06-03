@@ -12,10 +12,12 @@ class FamilyHospitalSchedulerScreen extends StatefulWidget {
   const FamilyHospitalSchedulerScreen({super.key});
 
   @override
-  State<FamilyHospitalSchedulerScreen> createState() => _FamilyHospitalSchedulerScreenState();
+  State<FamilyHospitalSchedulerScreen> createState() =>
+      _FamilyHospitalSchedulerScreenState();
 }
 
-class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerScreen> {
+class _FamilyHospitalSchedulerScreenState
+    extends State<FamilyHospitalSchedulerScreen> {
   final MockHospitalService _mockService = MockHospitalService();
 
   // Mock list of hospitals
@@ -109,7 +111,9 @@ class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerS
     final auth = context.read<AuthProvider>();
     final familyId = auth.currentUser?.uid ?? 'mock-family-id';
 
-    final selectedHospitalName = _hospitals.firstWhere((h) => h['id'] == _selectedHospitalId)['name']!;
+    final selectedHospitalName = _hospitals.firstWhere(
+      (h) => h['id'] == _selectedHospitalId,
+    )['name']!;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -141,7 +145,10 @@ class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerS
                     ),
                     const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.background,
                         borderRadius: BorderRadius.circular(12),
@@ -151,7 +158,10 @@ class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerS
                         child: DropdownButton<String>(
                           value: _selectedHospitalId,
                           isExpanded: true,
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: AppColors.primary,
+                          ),
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -197,7 +207,8 @@ class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerS
                 onDateSelected: (date) {
                   setState(() {
                     _selectedDate = date;
-                    _selectedSlot = null; // Reset selected time slot when date changes
+                    _selectedSlot =
+                        null; // Reset selected time slot when date changes
                   });
                   _loadMockAppointments();
                 },
@@ -221,7 +232,11 @@ class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerS
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(Icons.info_outline, size: 13, color: AppColors.textSecondary),
+                        const Icon(
+                          Icons.info_outline,
+                          size: 13,
+                          color: AppColors.textSecondary,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Menampilkan jadwal untuk $selectedHospitalName',
@@ -277,8 +292,12 @@ class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerS
           height: 50,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: _selectedSlot == null ? AppColors.border : AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              backgroundColor: _selectedSlot == null
+                  ? AppColors.border
+                  : AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               elevation: 0,
             ),
             onPressed: _selectedSlot == null || _isBooking
@@ -288,16 +307,21 @@ class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerS
                 ? const SizedBox(
                     width: 24,
                     height: 24,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
                   )
                 : Text(
                     _selectedSlot == null
                         ? 'Pilih Waktu Dahulu'
-                        : 'Jadwalkan Kunjungan (${_selectedSlot})',
+                        : 'Jadwalkan Kunjungan ($_selectedSlot)',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: _selectedSlot == null ? AppColors.textSecondary : Colors.white,
+                      color: _selectedSlot == null
+                          ? AppColors.textSecondary
+                          : Colors.white,
                     ),
                   ),
           ),

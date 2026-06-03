@@ -236,31 +236,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _showComingSoon(BuildContext context, String service) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 40, height: 4,
-              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 20),
-          const Icon(Icons.construction_rounded, size: 48, color: AppColors.primary),
-          const SizedBox(height: 12),
-          Text('Layanan $service\nSegera Hadir! 🚧',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-          const SizedBox(height: 8),
-          Text('Fitur $service sedang dalam pengembangan oleh tim kami.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textSecondary, height: 1.4)),
-          const SizedBox(height: 24),
-        ]),
-      ),
-    );
-  }
+
 }
 
 class _ServiceCard extends StatelessWidget {

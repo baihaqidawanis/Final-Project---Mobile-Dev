@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../models/appointment_model.dart';
 
 class MockHospitalService {
@@ -48,10 +49,10 @@ class MockHospitalService {
     await Future.delayed(const Duration(milliseconds: 400));
     
     // Print the payload for verification
-    print('-----------------------------------------');
-    print('[MockHospitalService] Booking Appointment:');
-    print('Appointment ID: ${appointment.appointmentId}');
-    print('Payload (toMap): ${appointment.toMap()}');
-    print('-----------------------------------------');
+    debugPrint('-----------------------------------------');
+    debugPrint('[MockHospitalService] Booking Appointment:');
+    debugPrint('Appointment ID: ${appointment.appointmentId}');
+    debugPrint('Payload (toMap): ${appointment.toMap()}');
+    debugPrint('-----------------------------------------');
   }
 }
