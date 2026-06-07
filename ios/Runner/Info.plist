@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Healink membutuhkan kamera untuk mengambil foto resep dokter.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Healink membutuhkan akses galeri untuk memilih foto resep dokter.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

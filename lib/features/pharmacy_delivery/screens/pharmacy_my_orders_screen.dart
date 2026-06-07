@@ -23,8 +23,10 @@ class PharmacyMyOrdersScreen extends StatelessWidget {
         backgroundColor: _kPurple,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Pesanan Saya',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Pesanan Saya',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
       body: StreamBuilder<List<PharmacyOrderModel>>(
         stream: service.getOrdersByUser(auth.currentUser?.uid ?? ''),
@@ -38,16 +40,27 @@ class PharmacyMyOrdersScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.receipt_long_outlined,
-                      size: 72, color: _kPurple.withValues(alpha: 0.25)),
+                  Icon(
+                    Icons.receipt_long_outlined,
+                    size: 72,
+                    color: _kPurple.withValues(alpha: 0.25),
+                  ),
                   const SizedBox(height: 16),
-                  const Text('Belum ada pesanan',
-                      style: TextStyle(
-                          fontSize: 15, color: AppColors.textSecondary)),
+                  const Text(
+                    'Belum ada pesanan',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  const Text('Pesan obat dari apotek terdekat',
-                      style: TextStyle(
-                          fontSize: 13, color: AppColors.textSecondary)),
+                  const Text(
+                    'Pesan obat dari apotek terdekat',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ],
               ),
             );
@@ -77,8 +90,11 @@ class _OrderCard extends StatefulWidget {
 }
 
 class _OrderCardState extends State<_OrderCard> {
-  static final _currency =
-      NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  static final _currency = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 0,
+  );
   static final _dateFormat = DateFormat('dd MMM yyyy, HH:mm');
 
   bool _confirming = false;
@@ -88,7 +104,8 @@ class _OrderCardState extends State<_OrderCard> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (_) => _ConfirmDeliverySheet(
         order: widget.order,
         service: widget.service,
@@ -126,14 +143,16 @@ class _OrderCardState extends State<_OrderCard> {
         ),
         child: const Row(
           children: [
-            Icon(Icons.cancel_outlined,
-                size: 16, color: AppColors.cancelled),
+            Icon(Icons.cancel_outlined, size: 16, color: AppColors.cancelled),
             SizedBox(width: 8),
-            Text('Pesanan dibatalkan',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.cancelled,
-                    fontWeight: FontWeight.w600)),
+            Text(
+              'Pesanan dibatalkan',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.cancelled,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       );
@@ -149,9 +168,7 @@ class _OrderCardState extends State<_OrderCard> {
           return Expanded(
             child: Container(
               height: 2,
-              color: done
-                  ? _kPurple
-                  : AppColors.border,
+              color: done ? _kPurple : AppColors.border,
             ),
           );
         }
@@ -168,12 +185,15 @@ class _OrderCardState extends State<_OrderCard> {
                 color: done ? _kPurple : Colors.white,
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: done ? _kPurple : AppColors.border, width: 2),
+                  color: done ? _kPurple : AppColors.border,
+                  width: 2,
+                ),
                 boxShadow: isActive
                     ? [
                         BoxShadow(
-                            color: _kPurple.withValues(alpha: 0.3),
-                            blurRadius: 6)
+                          color: _kPurple.withValues(alpha: 0.3),
+                          blurRadius: 6,
+                        ),
                       ]
                     : null,
               ),
@@ -182,15 +202,16 @@ class _OrderCardState extends State<_OrderCard> {
                   : null,
             ),
             const SizedBox(height: 4),
-            Text(_steps[stepIndex],
-                style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: isActive || done
-                        ? FontWeight.w700
-                        : FontWeight.w400,
-                    color: done
-                        ? _kPurple
-                        : AppColors.textSecondary)),
+            Text(
+              _steps[stepIndex],
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: isActive || done
+                    ? FontWeight.w700
+                    : FontWeight.w400,
+                color: done ? _kPurple : AppColors.textSecondary,
+              ),
+            ),
           ],
         );
       }),
@@ -220,39 +241,54 @@ class _OrderCardState extends State<_OrderCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Pharmacy header
-            Row(children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _kPurple.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _kPurple.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.local_pharmacy_rounded,
+                    color: _kPurple,
+                    size: 20,
+                  ),
                 ),
-                child: const Icon(Icons.local_pharmacy_rounded,
-                    color: _kPurple, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(o.pharmacyName,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        o.pharmacyName,
                         style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: AppColors.textPrimary)),
-                    Text(_dateFormat.format(o.createdAt),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        _dateFormat.format(o.createdAt),
                         style: const TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary)),
-                  ],
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Text(_currency.format(o.totalPrice),
+                Text(
+                  _currency.format(o.totalPrice),
                   style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: _kPurple)),
-            ]),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: _kPurple,
+                  ),
+                ),
+              ],
+            ),
 
             const SizedBox(height: 14),
 
@@ -267,25 +303,79 @@ class _OrderCardState extends State<_OrderCard> {
             Text(
               o.items.map((e) => '${e.quantity}x ${e.medicineName}').join(', '),
               style: const TextStyle(
-                  fontSize: 13, color: AppColors.textSecondary),
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
 
             if (o.deliveryAddress.isNotEmpty) ...[
               const SizedBox(height: 6),
-              Row(children: [
-                const Icon(Icons.location_on_outlined,
-                    size: 13, color: AppColors.textSecondary),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(o.deliveryAddress,
+              Row(
+                children: [
+                  const Icon(
+                    Icons.location_on_outlined,
+                    size: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      o.deliveryAddress,
                       style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary),
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
                       maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
+            if (o.prescriptionImageUrl != null &&
+                o.prescriptionImageUrl!.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: _kPurple.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _kPurple.withValues(alpha: 0.16)),
                 ),
-              ]),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        o.prescriptionImageUrl!,
+                        width: 54,
+                        height: 54,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 54,
+                          height: 54,
+                          color: AppColors.border,
+                          child: const Icon(Icons.broken_image_outlined),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Resep dokter terlampir',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
 
             // Confirm receipt button for shipped orders
@@ -298,13 +388,16 @@ class _OrderCardState extends State<_OrderCard> {
                     backgroundColor: _kPurple,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   onPressed: _confirming ? null : _showConfirmDialog,
                   icon: const Icon(Icons.check_circle_outline, size: 18),
-                  label: const Text('Konfirmasi Penerimaan',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  label: const Text(
+                    'Konfirmasi Penerimaan',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
             ],
@@ -318,56 +411,75 @@ class _OrderCardState extends State<_OrderCard> {
                   color: AppColors.accepted.withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                      color: AppColors.accepted.withValues(alpha: 0.2)),
+                    color: AppColors.accepted.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: o.rating != null
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(children: [
-                            const Icon(Icons.check_circle,
-                                size: 14, color: AppColors.accepted),
-                            const SizedBox(width: 6),
-                            const Text('Pesanan diterima',
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle,
+                                size: 14,
+                                color: AppColors.accepted,
+                              ),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Pesanan diterima',
                                 style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.accepted)),
-                            const Spacer(),
-                            Row(
-                              children: List.generate(
-                                5,
-                                (i) => Icon(
-                                  i < o.rating!.round()
-                                      ? Icons.star
-                                      : Icons.star_border,
-                                  size: 14,
-                                  color: const Color(0xFFFFC107),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.accepted,
                                 ),
                               ),
-                            ),
-                          ]),
-                          if (o.review != null &&
-                              o.review!.isNotEmpty) ...[
+                              const Spacer(),
+                              Row(
+                                children: List.generate(
+                                  5,
+                                  (i) => Icon(
+                                    i < o.rating!.round()
+                                        ? Icons.star
+                                        : Icons.star_border,
+                                    size: 14,
+                                    color: const Color(0xFFFFC107),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (o.review != null && o.review!.isNotEmpty) ...[
                             const SizedBox(height: 6),
-                            Text('"${o.review}"',
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                    fontStyle: FontStyle.italic)),
+                            Text(
+                              '"${o.review}"',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
                           ],
                         ],
                       )
-                    : const Row(children: [
-                        Icon(Icons.check_circle,
-                            size: 14, color: AppColors.accepted),
-                        SizedBox(width: 6),
-                        Text('Pesanan telah diterima',
+                    : const Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            size: 14,
+                            color: AppColors.accepted,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Pesanan telah diterima',
                             style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.accepted)),
-                      ]),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.accepted,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ],
           ],
@@ -420,8 +532,9 @@ class _ConfirmDeliverySheetState extends State<_ConfirmDeliverySheet> {
         widget.onDone();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Penerimaan dikonfirmasi. Terima kasih!'),
-              backgroundColor: AppColors.accepted),
+            content: Text('Penerimaan dikonfirmasi. Terima kasih!'),
+            backgroundColor: AppColors.accepted,
+          ),
         );
       }
     } catch (e) {
@@ -433,7 +546,8 @@ class _ConfirmDeliverySheetState extends State<_ConfirmDeliverySheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: Container(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         child: Column(
@@ -443,8 +557,9 @@ class _ConfirmDeliverySheetState extends State<_ConfirmDeliverySheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2)),
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -453,31 +568,42 @@ class _ConfirmDeliverySheetState extends State<_ConfirmDeliverySheet> {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                  color: AppColors.accepted.withValues(alpha: 0.1),
-                  shape: BoxShape.circle),
-              child: const Icon(Icons.local_shipping_rounded,
-                  color: AppColors.accepted, size: 32),
+                color: AppColors.accepted.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.local_shipping_rounded,
+                color: AppColors.accepted,
+                size: 32,
+              ),
             ),
             const SizedBox(height: 14),
-            const Text('Pesanan Sudah Diterima?',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary)),
+            const Text(
+              'Pesanan Sudah Diterima?',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
             const SizedBox(height: 6),
-            const Text('Konfirmasi jika obat sudah tiba di tanganmu',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 13, color: AppColors.textSecondary)),
+            const Text(
+              'Konfirmasi jika obat sudah tiba di tanganmu',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
             const SizedBox(height: 24),
 
             // Rating section
             if (!_skipRating) ...[
-              const Text('Beri Rating (opsional)',
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+              const Text(
+                'Beri Rating (opsional)',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
               const SizedBox(height: 12),
               RatingBar.builder(
                 initialRating: 0,
@@ -498,21 +624,23 @@ class _ConfirmDeliverySheetState extends State<_ConfirmDeliverySheet> {
                   hintText: 'Tulis ulasanmu (opsional)...',
                   prefixIcon: const Icon(Icons.rate_review_outlined),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: AppColors.border)),
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
                   enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          const BorderSide(color: AppColors.border)),
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
                 ),
                 maxLines: 2,
               ),
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () => setState(() => _skipRating = true),
-                child: const Text('Lewati, langsung konfirmasi',
-                    style: TextStyle(color: AppColors.textSecondary)),
+                child: const Text(
+                  'Lewati, langsung konfirmasi',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
               ),
             ] else ...[
               Container(
@@ -522,22 +650,33 @@ class _ConfirmDeliverySheetState extends State<_ConfirmDeliverySheet> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.border),
                 ),
-                child: const Row(children: [
-                  Icon(Icons.info_outline,
-                      size: 16, color: AppColors.textSecondary),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text('Rating tidak akan dikirimkan',
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Rating tidak akan dikirimkan',
                         style: TextStyle(
-                            fontSize: 13, color: AppColors.textSecondary)),
-                  ),
-                ]),
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () => setState(() => _skipRating = false),
-                child: const Text('Beri rating tetap',
-                    style: TextStyle(color: _kPurple)),
+                child: const Text(
+                  'Beri rating tetap',
+                  style: TextStyle(color: _kPurple),
+                ),
               ),
             ],
 
@@ -550,7 +689,8 @@ class _ConfirmDeliverySheetState extends State<_ConfirmDeliverySheet> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 onPressed: _isLoading ? null : _confirm,
                 child: _isLoading
@@ -558,10 +698,17 @@ class _ConfirmDeliverySheetState extends State<_ConfirmDeliverySheet> {
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
-                    : const Text('Ya, Sudah Diterima',
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Ya, Sudah Diterima',
                         style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w700)),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
               ),
             ),
           ],
