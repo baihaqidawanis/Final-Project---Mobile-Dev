@@ -108,7 +108,7 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                           margin: const EdgeInsets.only(right: 8),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
-                            color: selected ? AppColors.primary.withOpacity(0.1) : Colors.white,
+                            color: selected ? AppColors.primary.withValues(alpha: 0.1) : Colors.white,
                             border: Border.all(
                               color: selected ? AppColors.primary : AppColors.border,
                               width: selected ? 2 : 1,
@@ -243,7 +243,7 @@ class _MitraRegisterScreenState extends State<MitraRegisterScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.cancelled.withOpacity(0.1),
+                      color: AppColors.cancelled.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(_error!, style: const TextStyle(color: AppColors.cancelled)),

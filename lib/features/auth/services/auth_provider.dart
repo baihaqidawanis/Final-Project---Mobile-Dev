@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../../core/services/notification_service.dart';
 import '../models/user_model.dart';
 
 enum UserRole { admin, user, caregiver, hospital, pharmacy }
@@ -30,6 +31,8 @@ class AuthProvider extends ChangeNotifier {
     _currentUser = user;
     if (user != null) {
       await _fetchOrCreateUserRole(user);
+      // Save FCM token so this user can receive push notifications
+      await NotificationService().saveTokenToFirestore(user.uid);
     } else {
       _userRole = null;
       _userName = '';
@@ -165,6 +168,9 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    // Remove FCM token so user stops receiving notifications after logout
+    final uid = _currentUser?.uid ?? '';
+    await NotificationService().deleteToken(uid);
     await _auth.signOut();
   }
 }

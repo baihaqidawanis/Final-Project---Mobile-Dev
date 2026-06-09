@@ -19,6 +19,10 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
   late TabController _tabController;
   final _service = CaregiverFirestoreService();
 
+  // Single shared stream — avoids opening two Firestore connections
+  // for the same query (TabBar badge + body tab both need it).
+  Stream<List<BookingModel>>? _activeBookingsStream;
+
   // Profile edit controllers
   final _nameCtrl = TextEditingController();
   final _specializationCtrl = TextEditingController();
@@ -33,6 +37,13 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+  }
+
+  /// Returns (and lazily creates) a shared broadcast stream for active bookings.
+  Stream<List<BookingModel>> _getActiveStream(String uid) {
+    _activeBookingsStream ??=
+        _service.getActiveBookingsByCaregiver(uid).asBroadcastStream();
+    return _activeBookingsStream!;
   }
 
   @override
@@ -205,7 +216,7 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: StreamBuilder<List<BookingModel>>(
-            stream: _service.getActiveBookingsByCaregiver(uid),
+            stream: _getActiveStream(uid),
             builder: (context, snap) {
               final pendingCount = snap.data
                       ?.where((b) => b.status == BookingStatus.pending)
@@ -308,7 +319,7 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
       return const Center(child: Text('Silakan login ulang'));
     }
     return StreamBuilder<List<BookingModel>>(
-      stream: _service.getActiveBookingsByCaregiver(uid),
+      stream: _getActiveStream(uid),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(

@@ -45,17 +45,23 @@ class CaregiverFirestoreService {
 
   // ════════════════════════════════════════════════════════════════════════
   //  READ — Family: watch all their own bookings (for My Bookings screen)
+  //  NOTE: orderBy removed from server query to avoid composite index
+  //  requirement (familyId + createdAt). Sorted client-side instead.
   // ════════════════════════════════════════════════════════════════════════
   Stream<List<BookingModel>> getBookingsByFamily(String familyId) {
     return _bookings
         .where('familyId', isEqualTo: familyId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map(BookingModel.fromFirestore).toList());
+        .map((snap) {
+      final list = snap.docs.map(BookingModel.fromFirestore).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
   }
 
   // ════════════════════════════════════════════════════════════════════════
   //  READ — Caregiver: watch all incoming requests (real-time)
+  //  NOTE: orderBy only on single field — no composite index needed.
   // ════════════════════════════════════════════════════════════════════════
   Stream<List<BookingModel>> getBookingsByCaregiver(String caregiverId) {
     return _bookings
@@ -67,26 +73,36 @@ class CaregiverFirestoreService {
 
   // ════════════════════════════════════════════════════════════════════════
   //  READ — Caregiver: completed & cancelled bookings (for History screen)
+  //  NOTE: orderBy removed — composite index (caregiverId+status+createdAt)
+  //  not yet created. Sorted client-side instead.
   // ════════════════════════════════════════════════════════════════════════
   Stream<List<BookingModel>> getCompletedBookingsByCaregiver(String caregiverId) {
     return _bookings
         .where('caregiverId', isEqualTo: caregiverId)
         .where('status', whereIn: ['completed', 'cancelled'])
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map(BookingModel.fromFirestore).toList());
+        .map((snap) {
+      final list = snap.docs.map(BookingModel.fromFirestore).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
   }
 
   // ════════════════════════════════════════════════════════════════════════
   //  READ — Caregiver: only pending + accepted (active queue)
+  //  NOTE: orderBy removed — composite index (caregiverId+status+createdAt)
+  //  not yet created. Sorted client-side instead.
   // ════════════════════════════════════════════════════════════════════════
   Stream<List<BookingModel>> getActiveBookingsByCaregiver(String caregiverId) {
     return _bookings
         .where('caregiverId', isEqualTo: caregiverId)
         .where('status', whereIn: ['pending', 'accepted'])
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map(BookingModel.fromFirestore).toList());
+        .map((snap) {
+      final list = snap.docs.map(BookingModel.fromFirestore).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
   }
 
   // ════════════════════════════════════════════════════════════════════════

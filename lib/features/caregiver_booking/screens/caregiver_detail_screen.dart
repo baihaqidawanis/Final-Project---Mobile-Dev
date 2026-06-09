@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../features/auth/screens/login_screen.dart';
 import '../models/booking_model.dart';
 import '../models/caregiver_profile_model.dart';
@@ -67,6 +68,8 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
     if (picked != null) setState(() => _selectedTime = picked);
   }
 
+  /// Guard against double-booking: check if family already has an active
+  /// (pending/accepted) booking with this caregiver before creating a new one.
   Future<void> _submitBooking() async {
     if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -79,6 +82,33 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
     }
 
     setState(() => _isLoading = true);
+
+    // ── Double-booking guard ──────────────────────────────────────────────
+    try {
+      final existing = await _service.db
+          .collection('bookings')
+          .where('familyId', isEqualTo: widget.familyId)
+          .where('caregiverId', isEqualTo: widget.caregiver.uid)
+          .where('status', whereIn: ['pending', 'accepted'])
+          .limit(1)
+          .get();
+
+      if (existing.docs.isNotEmpty && mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                '⚠️ Kamu sudah punya booking aktif dengan caregiver ini. Tunggu sampai selesai atau batalkan dulu.'),
+            backgroundColor: AppColors.pending,
+            duration: Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+    } catch (_) {
+      // Silently continue if check fails (network issue etc.)
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
     final dateTime = DateTime(
       _selectedDate!.year,
@@ -104,6 +134,20 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
 
     await _service.createBooking(booking);
 
+    // 🔔 Send push notification to caregiver (fire & forget — doesn't block UI)
+    NotificationService().sendNotificationToUser(
+      targetUid: widget.caregiver.uid,
+      title: '📋 Booking Baru!',
+      body:
+          '${widget.familyName} memesan layanan ${widget.caregiver.specialization} kamu.',
+      data: {
+        'type': 'new_booking',
+        'familyId': widget.familyId,
+        'familyName': widget.familyName,
+      },
+    );
+
+
     if (mounted) {
       setState(() => _isLoading = false);
       Navigator.pop(context);
@@ -116,6 +160,45 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
       );
     }
   }
+
+  /// Confirm dialog before cancelling a booking from the detail screen.
+  void _confirmCancel(BookingModel b) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Batalkan Pesanan?',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(
+          'Batalkan booking dengan ${widget.caregiver.name} pada '
+          '${b.dateTime.day}/${b.dateTime.month}/${b.dateTime.year}?',
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tidak'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.cancelled),
+            onPressed: () {
+              _service.cancelBooking(b.bookingId);
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Pesanan dibatalkan'),
+                  backgroundColor: AppColors.cancelled,
+                ),
+              );
+            },
+            child: const Text('Batalkan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -439,7 +522,7 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
               if (b.status == BookingStatus.pending) ...[
                 const SizedBox(height: 8),
                 GestureDetector(
-                  onTap: () => _service.cancelBooking(b.bookingId),
+                  onTap: () => _confirmCancel(b),
                   child: const Text('Cancel',
                       style: TextStyle(
                           fontSize: 12,

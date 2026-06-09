@@ -26,6 +26,9 @@ dependencies:
   # ── Networking (Student C: openFDA API) ───────────────────
   http: ^1.4.0
 
+  # ── FCM V1 API: JWT signing for service account auth ──────
+  dart_jsonwebtoken: ^2.14.4
+
   # ── UI Utilities ──────────────────────────────────────────
   cached_network_image: ^3.4.1
   intl: ^0.20.2

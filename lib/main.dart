@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'package:provider/provider.dart';
 import 'core/constants/app_theme.dart';
+import 'core/services/notification_service.dart';
 import 'features/auth/services/auth_provider.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/admin/screens/admin_dashboard_screen.dart';
@@ -13,6 +15,13 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Register FCM background handler BEFORE runApp
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+  // Initialize FCM (request permission, setup handlers)
+  await NotificationService().initialize();
+
   runApp(const HealinkApp());
 }
 
