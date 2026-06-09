@@ -89,7 +89,7 @@ class _FamilyHospitalSchedulerScreenState
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Janji temu berhasil disimpan ke Firebase! 🔥'),
+            content: Text('Janji temu berhasil tersimpan'),
             backgroundColor: AppColors.accent,
           ),
         );
@@ -112,7 +112,7 @@ class _FamilyHospitalSchedulerScreenState
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
-    final familyId = auth.currentUser?.uid ?? 'mock-family-id';
+    final familyId = auth.currentUser?.uid ?? '';
 
     return Scaffold(
       backgroundColor: AppColors.background,
