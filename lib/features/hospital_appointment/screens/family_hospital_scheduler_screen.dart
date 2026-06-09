@@ -14,10 +14,12 @@ class FamilyHospitalSchedulerScreen extends StatefulWidget {
   const FamilyHospitalSchedulerScreen({super.key});
 
   @override
-  State<FamilyHospitalSchedulerScreen> createState() => _FamilyHospitalSchedulerScreenState();
+  State<FamilyHospitalSchedulerScreen> createState() =>
+      _FamilyHospitalSchedulerScreenState();
 }
 
-class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerScreen> {
+class _FamilyHospitalSchedulerScreenState
+    extends State<FamilyHospitalSchedulerScreen> {
   final HospitalFirestoreService _firestoreService = HospitalFirestoreService();
 
   String? _selectedHospitalId;
@@ -61,7 +63,9 @@ class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerS
   }
 
   Future<void> _handleBookAppointment(String familyId) async {
-    if (_isBooking || _selectedSlot == null || _selectedHospitalId == null) return;
+    if (_isBooking || _selectedSlot == null || _selectedHospitalId == null) {
+      return;
+    }
 
     setState(() {
       _isBooking = true;
@@ -189,8 +193,9 @@ class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerS
               _selectedHospitalId = hospitals.first['id'];
             }
 
-            final selectedHospitalName =
-                hospitals.firstWhere((h) => h['id'] == _selectedHospitalId)['name']!;
+            final selectedHospitalName = hospitals.firstWhere(
+              (h) => h['id'] == _selectedHospitalId,
+            )['name']!;
 
             return SingleChildScrollView(
               child: Column(
@@ -213,7 +218,10 @@ class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerS
                         ),
                         const SizedBox(height: 10),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.background,
                             borderRadius: BorderRadius.circular(12),
@@ -271,7 +279,8 @@ class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerS
                     onDateSelected: (date) {
                       setState(() {
                         _selectedDate = date;
-                        _selectedSlot = null; // Reset selected time slot when date changes
+                        _selectedSlot =
+                            null; // Reset selected time slot when date changes
                       });
                       _fetchWeather();
                     },
@@ -290,158 +299,182 @@ class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerS
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.info_outline, size: 13, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Menampilkan jadwal untuk $selectedHospitalName',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Weather Forecast Display Card
-                    Card(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: AppColors.border),
-                      ),
-                      color: AppColors.primary.withValues(alpha: 0.05),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        child: Row(
+                        const SizedBox(height: 6),
+                        Row(
                           children: [
-                            const Icon(Icons.wb_sunny_rounded, color: AppColors.primary, size: 20),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Prakiraan Cuaca: ',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: AppColors.textPrimary,
-                              ),
+                            const Icon(
+                              Icons.info_outline,
+                              size: 13,
+                              color: AppColors.textSecondary,
                             ),
-                            Expanded(
-                              child: Text(
-                                _weatherForecast,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  color: AppColors.primary,
-                                ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Menampilkan jadwal untuk $selectedHospitalName',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ),
+                        const SizedBox(height: 16),
 
-                    // Render live streams from Firestore for selected hospital & date
-                    StreamBuilder<List<AppointmentModel>>(
-                      stream: _firestoreService.getHospitalDailyAgenda(
-                        _selectedHospitalId!,
-                        _formatDateString(_selectedDate),
-                      ),
-                      builder: (context, agendaSnapshot) {
-                        if (agendaSnapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(24.0),
-                              child: CircularProgressIndicator(),
+                        // Weather Forecast Display Card
+                        Card(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: AppColors.border),
+                          ),
+                          color: AppColors.primary.withValues(alpha: 0.05),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
-                          );
-                        }
-
-                        if (agendaSnapshot.hasError) {
-                          return Center(
-                            child: Text(
-                              'Error loading slots: ${agendaSnapshot.error}',
-                              style: const TextStyle(color: AppColors.cancelled),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.wb_sunny_rounded,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Prakiraan Cuaca: ',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    _weatherForecast,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          );
-                        }
+                          ),
+                        ),
 
-                        final appointments = agendaSnapshot.data ?? [];
+                        // Render live streams from Firestore for selected hospital & date
+                        StreamBuilder<List<AppointmentModel>>(
+                          stream: _firestoreService.getHospitalDailyAgenda(
+                            _selectedHospitalId!,
+                            _formatDateString(_selectedDate),
+                          ),
+                          builder: (context, agendaSnapshot) {
+                            if (agendaSnapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(24.0),
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            }
 
-                        return CinemaSeatGrid(
-                          appointments: appointments,
-                          selectedSlot: _selectedSlot,
-                          onSlotSelected: (slot) {
-                            setState(() {
-                              _selectedSlot = slot;
-                            });
+                            if (agendaSnapshot.hasError) {
+                              return Center(
+                                child: Text(
+                                  'Error loading slots: ${agendaSnapshot.error}',
+                                  style: const TextStyle(
+                                    color: AppColors.cancelled,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            final appointments = agendaSnapshot.data ?? [];
+
+                            return CinemaSeatGrid(
+                              appointments: appointments,
+                              selectedSlot: _selectedSlot,
+                              onSlotSelected: (slot) {
+                                setState(() {
+                                  _selectedSlot = slot;
+                                });
+                              },
+                            );
                           },
-                        );
-                      },
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 40),
+                ],
               ),
-              const SizedBox(height: 40),
-            ],
-          ),
-        );
-      },
-    ),
-  ),
-  // 4. Floating Action Booking Button
-  bottomNavigationBar: Container(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.05),
-          blurRadius: 10,
-          offset: const Offset(0, -4),
+            );
+          },
         ),
-      ],
-    ),
-    child: SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _selectedSlot == null || _selectedHospitalId == null
-              ? AppColors.border
-              : AppColors.primary,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 0,
-        ),
-        onPressed: _selectedSlot == null || _selectedHospitalId == null || _isBooking
-            ? null
-            : () => _handleBookAppointment(familyId),
-        child: _isBooking
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-              )
-            : Text(
-                _selectedSlot == null
-                    ? 'Pilih Waktu Dahulu'
-                    : 'Jadwalkan Kunjungan (${_selectedSlot})',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: _selectedSlot == null || _selectedHospitalId == null
-                      ? AppColors.textSecondary
-                      : Colors.white,
-                ),
-              ),
       ),
-    ),
-  ),
-);
+      // 4. Floating Action Booking Button
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  _selectedSlot == null || _selectedHospitalId == null
+                  ? AppColors.border
+                  : AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            onPressed:
+                _selectedSlot == null ||
+                    _selectedHospitalId == null ||
+                    _isBooking
+                ? null
+                : () => _handleBookAppointment(familyId),
+            child: _isBooking
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
+                    ),
+                  )
+                : Text(
+                    _selectedSlot == null
+                        ? 'Pilih Waktu Dahulu'
+                        : 'Jadwalkan Kunjungan ($_selectedSlot)',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color:
+                          _selectedSlot == null || _selectedHospitalId == null
+                          ? AppColors.textSecondary
+                          : Colors.white,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
   }
 }
