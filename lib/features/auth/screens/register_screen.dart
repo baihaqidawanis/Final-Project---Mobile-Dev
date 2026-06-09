@@ -21,10 +21,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _selectedRole = 'family';
 
   final List<Map<String, dynamic>> _roles = [
-    {'value': 'family', 'label': 'Family / Patient', 'icon': Icons.family_restroom},
-    {'value': 'caregiver', 'label': 'Mitra Caregiver', 'icon': Icons.medical_services_outlined},
-    {'value': 'hospital', 'label': 'Mitra Rumah Sakit', 'icon': Icons.local_hospital_outlined},
-    {'value': 'pharmacy', 'label': 'Mitra Farmasi', 'icon': Icons.medication_outlined},
+    {
+      'value': 'family',
+      'label': 'Family / Patient',
+      'icon': Icons.family_restroom,
+    },
+    {
+      'value': 'caregiver',
+      'label': 'Mitra Caregiver',
+      'icon': Icons.medical_services_outlined,
+    },
+    {
+      'value': 'hospital',
+      'label': 'Mitra Rumah Sakit',
+      'icon': Icons.local_hospital_outlined,
+    },
+    {
+      'value': 'pharmacy',
+      'label': 'Mitra Farmasi',
+      'icon': Icons.medication_outlined,
+    },
   ];
 
   @override
@@ -181,8 +197,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     labelText: 'Email',
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
-                  validator: (v) =>
-                      (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
+                  validator: (v) => (v == null || !v.contains('@'))
+                      ? 'Enter a valid email'
+                      : null,
                 ),
                 const SizedBox(height: 16),
 
