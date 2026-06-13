@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -15,12 +16,13 @@ class HospitalAdminDashboardScreen extends StatefulWidget {
 
 class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScreen> {
   final HospitalFirestoreService _firestoreService = HospitalFirestoreService();
-  late final String _todayDateString;
+  DateTime _selectedDate = DateTime.now();
+
+  String get _selectedDateString => DateFormat('yyyy-MM-dd').format(_selectedDate);
 
   @override
   void initState() {
     super.initState();
-    _todayDateString = DateFormat('yyyy-MM-dd').format(DateTime.now());
   }
 
   Color _getStatusColor(String status) {
@@ -62,32 +64,88 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
           children: [
             // Header showing selected/today date info
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               color: Colors.white,
               width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Jadwal Janji Temu Hari Ini',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Jadwal Janji Temu',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_today, size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 6),
+                          Text(
+                            DateFormat('EEEE, d MMMM yyyy').format(_selectedDate),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today, size: 14, color: AppColors.textSecondary),
-                      const SizedBox(width: 6),
-                      Text(
-                        DateFormat('EEEE, d MMMM yyyy').format(DateTime.now()),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left, color: AppColors.primary),
+                        tooltip: 'Hari Sebelumnya',
+                        onPressed: () {
+                          setState(() {
+                            _selectedDate = _selectedDate.subtract(const Duration(days: 1));
+                          });
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.date_range_rounded, color: AppColors.primary),
+                        tooltip: 'Pilih Tanggal',
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _selectedDate,
+                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                            lastDate: DateTime.now().add(const Duration(days: 365)),
+                            builder: (context, child) {
+                              return Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: const ColorScheme.light(
+                                    primary: AppColors.primary,
+                                    onPrimary: Colors.white,
+                                    onSurface: AppColors.textPrimary,
+                                  ),
+                                ),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (picked != null) {
+                            setState(() {
+                              _selectedDate = picked;
+                            });
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right, color: AppColors.primary),
+                        tooltip: 'Hari Berikutnya',
+                        onPressed: () {
+                          setState(() {
+                            _selectedDate = _selectedDate.add(const Duration(days: 1));
+                          });
+                        },
                       ),
                     ],
                   ),
@@ -99,7 +157,7 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
             // Daily roster stream list builder
             Expanded(
               child: StreamBuilder<List<AppointmentModel>>(
-                stream: _firestoreService.getHospitalDailyAgenda(hospitalId, _todayDateString),
+                stream: _firestoreService.getHospitalDailyAgenda(hospitalId, _selectedDateString),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
@@ -196,13 +254,27 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      'ID Keluarga: ${appointment.familyId}',
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.textPrimary,
-                                      ),
+                                    FutureBuilder<DocumentSnapshot>(
+                                      future: FirebaseFirestore.instance.collection('users').doc(appointment.familyId).get(),
+                                      builder: (context, userSnapshot) {
+                                        String displayName = 'Memuat nama...';
+                                        if (userSnapshot.connectionState == ConnectionState.done) {
+                                          if (userSnapshot.hasData && userSnapshot.data!.exists) {
+                                            final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                                            displayName = userData?['name'] ?? appointment.familyId;
+                                          } else {
+                                            displayName = appointment.familyId; // Fallback to ID
+                                          }
+                                        }
+                                        return Text(
+                                          'Pasien: $displayName',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        );
+                                      },
                                     ),
                                     const SizedBox(height: 6),
                                     Row(
