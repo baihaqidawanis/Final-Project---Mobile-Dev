@@ -1,9 +1,12 @@
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../models/booking_model.dart';
 import '../models/caregiver_profile_model.dart';
 
 class CaregiverFirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // Public getter for direct Firestore access
   FirebaseFirestore get db => _db;
@@ -142,6 +145,24 @@ class CaregiverFirestoreService {
   Future<void> updateCaregiverProfile(
       String uid, Map<String, dynamic> updatedFields) async {
     await _caregivers.doc(uid).update(updatedFields);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  UPLOAD — Caregiver: upload profile photo to Firebase Storage
+  //  Returns the public download URL on success.
+  // ════════════════════════════════════════════════════════════════════════
+  Future<String> uploadProfilePhoto({
+    required String uid,
+    required Uint8List bytes,
+    required String contentType, // e.g. 'image/jpeg'
+  }) async {
+    final path = 'caregiver_photos/$uid/profile.jpg';
+    final ref = _storage.ref(path);
+    await ref.putData(bytes, SettableMetadata(contentType: contentType));
+    final url = await ref.getDownloadURL();
+    // Persist URL to Firestore so it appears in caregiver listing
+    await _caregivers.doc(uid).update({'photoUrl': url});
+    return url;
   }
 
   // NOTE: No seed data — caregivers appear when they register via MitraRegisterScreen

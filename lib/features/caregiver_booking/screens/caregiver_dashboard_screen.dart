@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../features/auth/services/auth_provider.dart';
 import '../models/booking_model.dart';
 import '../services/caregiver_firestore_service.dart';
@@ -32,6 +34,8 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
   bool _isAvailable = true;
   bool _savingProfile = false;
   bool _profileLoaded = false;
+  bool _uploadingPhoto = false;
+  String _currentPhotoUrl = '';
 
   @override
   void initState() {
@@ -77,6 +81,73 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
       );
     }
   }
+
+  // ── Pick & upload profile photo ──────────────────────────────────────────
+  Future<void> _pickAndUploadPhoto(String uid) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 800,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _uploadingPhoto = true);
+    try {
+      final bytes = await picked.readAsBytes();
+      final url = await _service.uploadProfilePhoto(
+        uid: uid,
+        bytes: bytes,
+        contentType: picked.mimeType ?? 'image/jpeg',
+      );
+      if (mounted) setState(() => _currentPhotoUrl = url);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Foto profil berhasil diperbarui'),
+            backgroundColor: AppColors.accepted,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Gagal upload foto: $e'),
+            backgroundColor: AppColors.cancelled,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
+  }
+
+  // ── Accept booking + notify family ───────────────────────────────────────
+  Future<void> _acceptBooking(BookingModel b) async {
+    await _service.updateBookingStatus(b.bookingId, BookingStatus.accepted);
+    NotificationService().sendNotificationToUser(
+      targetUid: b.familyId,
+      title: '✅ Booking Diterima!',
+      body: 'Caregiver $_nameForNotif telah menerima booking kamu. '
+          'Tanggal: ${b.dateTime.day}/${b.dateTime.month}/${b.dateTime.year}.',
+      data: {'type': 'booking_accepted', 'bookingId': b.bookingId},
+    );
+  }
+
+  // ── Decline booking + notify family ─────────────────────────────────────
+  Future<void> _declineBooking(BookingModel b) async {
+    await _service.updateBookingStatus(b.bookingId, BookingStatus.cancelled);
+    NotificationService().sendNotificationToUser(
+      targetUid: b.familyId,
+      title: '❌ Booking Ditolak',
+      body: 'Maaf, caregiver $_nameForNotif tidak bisa menerima booking kamu. '
+          'Silakan pilih caregiver lain.',
+      data: {'type': 'booking_declined', 'bookingId': b.bookingId},
+    );
+  }
+
+  String get _nameForNotif => _nameCtrl.text.isNotEmpty ? _nameCtrl.text.trim() : 'kami';
 
   Future<void> _showCompleteDialog(BookingModel b) async {
     final noteCtrl = TextEditingController();
@@ -415,6 +486,7 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
             _areaCtrl.text = data['area'] ?? '';
             _bioCtrl.text = data['bio'] ?? '';
             _isAvailable = data['isAvailable'] ?? true;
+            _currentPhotoUrl = data['photoUrl'] ?? '';
             _profileLoaded = true;
           }
         }
@@ -424,62 +496,90 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar
+              // Avatar with photo upload
               Center(
-                child: Stack(
-                  children: [
-                    Container(
-                      width: 96,
-                      height: 96,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primary,
-                            AppColors.primary.withValues(alpha: 0.7),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.3),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
+                child: GestureDetector(
+                  onTap: _uploadingPhoto ? null : () => _pickAndUploadPhoto(uid),
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: 96,
+                        height: 96,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primary,
+                              AppColors.primary.withValues(alpha: 0.7),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          _nameCtrl.text.isNotEmpty
-                              ? _nameCtrl.text[0].toUpperCase()
-                              : 'C',
-                          style: const TextStyle(
-                            fontSize: 40,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 2,
-                      right: 2,
-                      child: Container(
-                        width: 26,
-                        height: 26,
-                        decoration: const BoxDecoration(
-                          color: AppColors.accepted,
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
-                        child: const Icon(
-                          Icons.verified_rounded,
-                          color: Colors.white,
-                          size: 16,
+                        child: _uploadingPhoto
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2.5))
+                            : _currentPhotoUrl.isNotEmpty
+                                ? ClipOval(
+                                    child: Image.network(
+                                      _currentPhotoUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, _) => Center(
+                                        child: Text(
+                                          _nameCtrl.text.isNotEmpty
+                                              ? _nameCtrl.text[0].toUpperCase()
+                                              : 'C',
+                                          style: const TextStyle(
+                                            fontSize: 40,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Center(
+                                    child: Text(
+                                      _nameCtrl.text.isNotEmpty
+                                          ? _nameCtrl.text[0].toUpperCase()
+                                          : 'C',
+                                      style: const TextStyle(
+                                        fontSize: 40,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                      ),
+                      // Camera icon overlay
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: AppColors.accent,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 6),
@@ -856,8 +956,7 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
                             padding:
                                 const EdgeInsets.symmetric(vertical: 10),
                           ),
-                          onPressed: () => _service.updateBookingStatus(
-                              b.bookingId, BookingStatus.accepted),
+                          onPressed: () => _acceptBooking(b),
                           icon: const Icon(Icons.check, size: 16),
                           label: const Text('Terima',
                               style: TextStyle(fontWeight: FontWeight.w600)),
@@ -912,7 +1011,7 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.cancelled),
             onPressed: () {
-              _service.updateBookingStatus(b.bookingId, BookingStatus.cancelled);
+              _declineBooking(b);
               Navigator.pop(ctx);
             },
             child: const Text('Tolak'),

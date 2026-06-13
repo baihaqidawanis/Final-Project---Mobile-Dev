@@ -13,11 +13,11 @@ Healink adalah aplikasi mobile on-demand untuk layanan kesehatan rumahan, mirip 
 
 ## 👥 Tim & Modul
 
-| Student | Modul | Folder |
-|---|---|---|
-| Student A (Kamu) | Caregiver Booking | `lib/features/caregiver_booking/` |
-| Student B | Hospital & Appointment | `lib/features/hospital_appointment/` |
-| Student C | Pharmacy & Delivery | `lib/features/pharmacy_delivery/` |
+| Student | Modul | Folder | Docs |
+|---|---|---|---|
+| **Baihaqi** (Student A) | Caregiver Booking | `lib/features/caregiver_booking/` | [📄 BAIHAQI.md](./BAIHAQI.md) |
+| Student B | Hospital & Appointment | `lib/features/hospital_appointment/` | — |
+| Student C | Pharmacy & Delivery | `lib/features/pharmacy_delivery/` | — |
 
 ---
 
@@ -84,14 +84,17 @@ flutter run
 
 ```
 App buka → HomeScreen (tanpa login)
+  ├── [Health AI Chat] → Health Assistant Chatbot (Groq AI)
   ├── [Caregiver] → CaregiverListScreen → Profil → Pesan
   │         └── Belum login? → Bottom sheet "Sign In dulu"
-  ├── [Rumah Sakit] → Coming Soon (Student B)
-  └── [Farmasi] → Coming Soon (Student C)
+  ├── [Rumah Sakit] → FamilyHospitalSchedulerScreen (Student B)
+  └── [Farmasi] → PharmacyListScreen (Student C)
 
 Sign In
   ├── Pengguna → HomeScreen (bisa langsung pesan)
-  ├── Caregiver → Dashboard (Tab: Pesanan | Tab: Edit Profil)
+  ├── Caregiver → Dashboard (Tab: Pesanan | Riwayat | Edit Profil + Upload Foto)
+  ├── Hospital  → HospitalAdminDashboardScreen (Student B)
+  ├── Pharmacy  → PharmacyOrderIntakeScreen (Student C)
   └── Admin → Admin Panel
 ```
 
@@ -137,4 +140,10 @@ Lihat [prd.md](./prd.md) untuk CRUD mapping, database schema, sprint schedule, d
 ## ⚠️ Keamanan
 
 `firebase_options.dart` dan `google-services.json` **tidak ada di repo ini** (di `.gitignore`).
-Minta file ke haqi via DM/WA untuk setup lokal.
+Minta file ke Baihaqi via DM/WA untuk setup lokal.
+
+---
+
+## 📄 Kontribusi Individu
+
+- [🟦 Baihaqi — Caregiver Booking](./BAIHAQI.md) — CRUD, Firebase Storage, Groq AI, Push Notification

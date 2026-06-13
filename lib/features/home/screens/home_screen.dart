@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../auth/services/auth_provider.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../caregiver_booking/screens/caregiver_list_screen.dart';
+import '../../caregiver_booking/screens/health_chatbot_screen.dart';
 import '../../caregiver_booking/screens/my_bookings_screen.dart';
 import '../../pharmacy_delivery/screens/pharmacy_list_screen.dart';
 
@@ -263,6 +264,83 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+
+              // ── Health AI Chatbot Banner ────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const HealthChatbotScreen(),
+                    ),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF00B4A6), Color(0xFF0097A7)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.25),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.health_and_safety_rounded,
+                            color: Colors.white,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Health Assistant AI 🤖',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(height: 3),
+                              Text(
+                                'Tanya kebutuhan caregiver pasienmu',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_forward_ios,
+                          color: Colors.white70,
+                          size: 14,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
               // ── Service Categories ──────────────────────────────────────
               const Padding(
