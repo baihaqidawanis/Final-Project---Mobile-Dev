@@ -430,7 +430,7 @@ class _FamilyHospitalSchedulerScreenState extends State<FamilyHospitalSchedulerS
             : Text(
                 _selectedSlot == null
                     ? 'Pilih Waktu Dahulu'
-                    : 'Jadwalkan Kunjungan (${_selectedSlot})',
+                    : 'Jadwalkan Kunjungan ($_selectedSlot)',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
