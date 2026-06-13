@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -21,10 +22,6 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
   late TabController _tabController;
   final _service = CaregiverFirestoreService();
 
-  // Single shared stream — avoids opening two Firestore connections
-  // for the same query (TabBar badge + body tab both need it).
-  Stream<List<BookingModel>>? _activeBookingsStream;
-
   // Profile edit controllers
   final _nameCtrl = TextEditingController();
   final _specializationCtrl = TextEditingController();
@@ -43,11 +40,10 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  /// Returns (and lazily creates) a shared broadcast stream for active bookings.
+  /// Returns a stream of active bookings. Firestore automatically handles local caching
+  /// so calling this multiple times for different StreamBuilders is perfectly fine.
   Stream<List<BookingModel>> _getActiveStream(String uid) {
-    _activeBookingsStream ??=
-        _service.getActiveBookingsByCaregiver(uid).asBroadcastStream();
-    return _activeBookingsStream!;
+    return _service.getActiveBookingsByCaregiver(uid);
   }
 
   @override
@@ -87,8 +83,8 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 80,
-      maxWidth: 800,
+      imageQuality: 40,
+      maxWidth: 400,
     );
     if (picked == null || !mounted) return;
 
@@ -121,6 +117,19 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
     } finally {
       if (mounted) setState(() => _uploadingPhoto = false);
     }
+  }
+
+  Widget _buildFallbackAvatar() {
+    return Center(
+      child: Text(
+        _nameCtrl.text.isNotEmpty ? _nameCtrl.text[0].toUpperCase() : 'C',
+        style: const TextStyle(
+          fontSize: 40,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
+        ),
+      ),
+    );
   }
 
   // ── Accept booking + notify family ───────────────────────────────────────
@@ -529,35 +538,19 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
                                     color: Colors.white, strokeWidth: 2.5))
                             : _currentPhotoUrl.isNotEmpty
                                 ? ClipOval(
-                                    child: Image.network(
-                                      _currentPhotoUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, _) => Center(
-                                        child: Text(
-                                          _nameCtrl.text.isNotEmpty
-                                              ? _nameCtrl.text[0].toUpperCase()
-                                              : 'C',
-                                          style: const TextStyle(
-                                            fontSize: 40,
-                                            fontWeight: FontWeight.w800,
-                                            color: Colors.white,
+                                    child: _currentPhotoUrl.startsWith('data:image')
+                                        ? Image.memory(
+                                            base64Decode(_currentPhotoUrl.split(',').last),
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, _) => _buildFallbackAvatar(),
+                                          )
+                                        : Image.network(
+                                            _currentPhotoUrl,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, _) => _buildFallbackAvatar(),
                                           ),
-                                        ),
-                                      ),
-                                    ),
                                   )
-                                : Center(
-                                    child: Text(
-                                      _nameCtrl.text.isNotEmpty
-                                          ? _nameCtrl.text[0].toUpperCase()
-                                          : 'C',
-                                      style: const TextStyle(
-                                        fontSize: 40,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
+                                : _buildFallbackAvatar(),
                       ),
                       // Camera icon overlay
                       Positioned(

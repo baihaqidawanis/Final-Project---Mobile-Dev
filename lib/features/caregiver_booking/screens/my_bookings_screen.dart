@@ -164,7 +164,7 @@ class MyBookingsScreen extends StatelessWidget {
           _detailRow(Icons.note_outlined, b.notes),
         ],
 
-        // Cancel button — only for PENDING bookings (CRUD Delete)
+        // Actions: Cancel for PENDING (Soft Delete), Delete for HISTORY (Hard Delete)
         if (b.status == BookingStatus.pending) ...[
           const SizedBox(height: 14),
           SizedBox(
@@ -179,6 +179,23 @@ class MyBookingsScreen extends StatelessWidget {
               icon: const Icon(Icons.cancel_outlined, size: 18),
               label: const Text('Batalkan Pesanan'),
               onPressed: () => _confirmCancel(context, b, service),
+            ),
+          ),
+        ] else if (b.status == BookingStatus.completed ||
+            b.status == BookingStatus.cancelled) ...[
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textSecondary,
+                side: const BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.delete_outline, size: 18),
+              label: const Text('Hapus Riwayat'),
+              onPressed: () => _confirmDelete(context, b, service),
             ),
           ),
         ],
@@ -228,6 +245,36 @@ class MyBookingsScreen extends StatelessWidget {
               );
             },
             child: const Text('Batalkan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(
+      BuildContext context, BookingModel b, CaregiverFirestoreService service) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Hapus Riwayat?',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        content: const Text(
+          'Riwayat pesanan ini akan dihapus secara permanen dari daftar kamu.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.cancelled),
+            onPressed: () {
+              service.deleteBookingHistory(b.bookingId);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Hapus'),
           ),
         ],
       ),

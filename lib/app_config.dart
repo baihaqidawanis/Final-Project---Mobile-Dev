@@ -9,7 +9,8 @@ class AppConfig {
   // Get your free API key at: https://console.groq.com → API Keys → Create API Key
   // Free tier: 30 req/min, 6000 token/min — lebih dari cukup untuk demo
   // ⚠️ Jangan commit key asli ke GitHub! Isi key asli hanya saat run lokal.
-  static const String groqApiKey = 'YOUR_GROQ_API_KEY_HERE';
+  static const String groqApiKey =
+      ''; // TODO: INSERT_YOUR_API_KEY_HERE (Do not commit real keys!)
 
   // Getter to retrieve the appropriate WeatherRepository
   static WeatherRepository get weatherRepository {

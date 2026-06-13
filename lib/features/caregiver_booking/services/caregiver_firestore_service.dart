@@ -1,12 +1,11 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import '../models/booking_model.dart';
 import '../models/caregiver_profile_model.dart';
 
 class CaregiverFirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // Public getter for direct Firestore access
   FirebaseFirestore get db => _db;
@@ -31,8 +30,9 @@ class CaregiverFirestoreService {
     return _caregivers
         .where('isAvailable', isEqualTo: true)
         .snapshots()
-        .map((snap) =>
-            snap.docs.map(CaregiverProfileModel.fromFirestore).toList());
+        .map(
+          (snap) => snap.docs.map(CaregiverProfileModel.fromFirestore).toList(),
+        );
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -52,10 +52,9 @@ class CaregiverFirestoreService {
   //  requirement (familyId + createdAt). Sorted client-side instead.
   // ════════════════════════════════════════════════════════════════════════
   Stream<List<BookingModel>> getBookingsByFamily(String familyId) {
-    return _bookings
-        .where('familyId', isEqualTo: familyId)
-        .snapshots()
-        .map((snap) {
+    return _bookings.where('familyId', isEqualTo: familyId).snapshots().map((
+      snap,
+    ) {
       final list = snap.docs.map(BookingModel.fromFirestore).toList();
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return list;
@@ -79,16 +78,18 @@ class CaregiverFirestoreService {
   //  NOTE: orderBy removed — composite index (caregiverId+status+createdAt)
   //  not yet created. Sorted client-side instead.
   // ════════════════════════════════════════════════════════════════════════
-  Stream<List<BookingModel>> getCompletedBookingsByCaregiver(String caregiverId) {
+  Stream<List<BookingModel>> getCompletedBookingsByCaregiver(
+    String caregiverId,
+  ) {
     return _bookings
         .where('caregiverId', isEqualTo: caregiverId)
         .where('status', whereIn: ['completed', 'cancelled'])
         .snapshots()
         .map((snap) {
-      final list = snap.docs.map(BookingModel.fromFirestore).toList();
-      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return list;
-    });
+          final list = snap.docs.map(BookingModel.fromFirestore).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -102,17 +103,19 @@ class CaregiverFirestoreService {
         .where('status', whereIn: ['pending', 'accepted'])
         .snapshots()
         .map((snap) {
-      final list = snap.docs.map(BookingModel.fromFirestore).toList();
-      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return list;
-    });
+          final list = snap.docs.map(BookingModel.fromFirestore).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   // ════════════════════════════════════════════════════════════════════════
   //  UPDATE — Caregiver: accept or decline a booking
   // ════════════════════════════════════════════════════════════════════════
   Future<void> updateBookingStatus(
-      String bookingId, BookingStatus status) async {
+    String bookingId,
+    BookingStatus status,
+  ) async {
     await _bookings.doc(bookingId).update({
       'status': BookingModel.statusToString(status),
     });
@@ -122,7 +125,9 @@ class CaregiverFirestoreService {
   //  UPDATE — Caregiver: mark complete + write clinical log note (per PRD)
   // ════════════════════════════════════════════════════════════════════════
   Future<void> completeBookingWithNote(
-      String bookingId, String clinicalNote) async {
+    String bookingId,
+    String clinicalNote,
+  ) async {
     await _bookings.doc(bookingId).update({
       'status': BookingModel.statusToString(BookingStatus.completed),
       'clinicalNote': clinicalNote.trim(),
@@ -140,29 +145,37 @@ class CaregiverFirestoreService {
   }
 
   // ════════════════════════════════════════════════════════════════════════
+  //  DELETE — Family: hard delete a booking from history
+  // ════════════════════════════════════════════════════════════════════════
+  Future<void> deleteBookingHistory(String bookingId) async {
+    await _bookings.doc(bookingId).delete();
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
   //  UPDATE — Caregiver: edit their own public profile
   // ════════════════════════════════════════════════════════════════════════
   Future<void> updateCaregiverProfile(
-      String uid, Map<String, dynamic> updatedFields) async {
+    String uid,
+    Map<String, dynamic> updatedFields,
+  ) async {
     await _caregivers.doc(uid).update(updatedFields);
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  //  UPLOAD — Caregiver: upload profile photo to Firebase Storage
-  //  Returns the public download URL on success.
+  //  UPLOAD — Caregiver: upload profile photo
+  //  Saves directly to Firestore as Base64 to bypass Firebase Storage setup.
   // ════════════════════════════════════════════════════════════════════════
   Future<String> uploadProfilePhoto({
     required String uid,
     required Uint8List bytes,
     required String contentType, // e.g. 'image/jpeg'
   }) async {
-    final path = 'caregiver_photos/$uid/profile.jpg';
-    final ref = _storage.ref(path);
-    await ref.putData(bytes, SettableMetadata(contentType: contentType));
-    final url = await ref.getDownloadURL();
+    final base64String = base64Encode(bytes);
+    final dataUri = 'data:$contentType;base64,$base64String';
+
     // Persist URL to Firestore so it appears in caregiver listing
-    await _caregivers.doc(uid).update({'photoUrl': url});
-    return url;
+    await _caregivers.doc(uid).update({'photoUrl': dataUri});
+    return dataUri;
   }
 
   // NOTE: No seed data — caregivers appear when they register via MitraRegisterScreen

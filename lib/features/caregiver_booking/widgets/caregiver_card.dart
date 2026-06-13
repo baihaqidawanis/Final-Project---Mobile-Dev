@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/caregiver_profile_model.dart';
@@ -51,15 +52,28 @@ class CaregiverCard extends StatelessWidget {
                   ),
                   child: caregiver.photoUrl.isNotEmpty
                       ? ClipOval(
-                          child: Image.network(
-                            caregiver.photoUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stack) => const Icon(
-                              Icons.person,
-                              color: AppColors.primary,
-                              size: 32,
-                            ),
-                          ),
+                          child: caregiver.photoUrl.startsWith('data:image')
+                              ? Image.memory(
+                                  base64Decode(
+                                      caregiver.photoUrl.split(',').last),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stack) =>
+                                      const Icon(
+                                    Icons.person,
+                                    color: AppColors.primary,
+                                    size: 32,
+                                  ),
+                                )
+                              : Image.network(
+                                  caregiver.photoUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stack) =>
+                                      const Icon(
+                                    Icons.person,
+                                    color: AppColors.primary,
+                                    size: 32,
+                                  ),
+                                ),
                         )
                       : Center(
                           child: Text(

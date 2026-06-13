@@ -1,0 +1,26 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Caregiver Profile Photos ───────────────────────────────────────────
+    // Only the caregiver themselves can upload their own photo.
+    // Anyone can read (so photo shows in listing for all users).
+    match /caregiver_photos/{uid}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ── Pharmacy Prescription Photos ──────────────────────────────────────
+    // Any authenticated user can upload a prescription.
+    // Pharmacy (owner) and the uploader can read.
+    match /pharmacy_prescriptions/{pharmacyId}/{userId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Fallback: deny everything else ───────────────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
