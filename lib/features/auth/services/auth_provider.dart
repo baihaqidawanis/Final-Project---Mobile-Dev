@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/notification_service.dart';
 import '../models/user_model.dart';
 
@@ -24,6 +25,23 @@ class AuthProvider extends ChangeNotifier {
   String get userName => _userName;
 
   AuthProvider() {
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedRole = prefs.getString('cached_user_role');
+      final cachedName = prefs.getString('cached_user_name');
+      if (cachedRole != null) {
+        _userRole = _parseRole(cachedRole);
+      }
+      if (cachedName != null) {
+        _userName = cachedName;
+      }
+    } catch (e) {
+      debugPrint('Error loading cached role: $e');
+    }
     _auth.authStateChanges().listen(_onAuthStateChanged);
   }
 
@@ -44,9 +62,13 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _fetchOrCreateUserRole(User user) async {
     try {
       final doc = await _db.collection('users').doc(user.uid).get();
+      final prefs = await SharedPreferences.getInstance();
       if (doc.exists) {
-        _userRole = _parseRole(doc.data()?['role']);
+        final roleStr = doc.data()?['role'];
+        _userRole = _parseRole(roleStr);
         _userName = doc.data()?['name'] ?? user.email ?? '';
+        await prefs.setString('cached_user_role', roleStr ?? 'user');
+        await prefs.setString('cached_user_name', _userName);
       } else if (user.email == 'admin@mail.com') {
         // Auto-assign admin role on first login
         await _db.collection('users').doc(user.uid).set({
@@ -58,14 +80,20 @@ class AuthProvider extends ChangeNotifier {
         });
         _userRole = UserRole.admin;
         _userName = 'Super Admin';
+        await prefs.setString('cached_user_role', 'admin');
+        await prefs.setString('cached_user_name', 'Super Admin');
       } else {
         _userRole = UserRole.user;
         _userName = user.email ?? '';
+        await prefs.setString('cached_user_role', 'user');
+        await prefs.setString('cached_user_name', _userName);
       }
     } catch (e) {
       debugPrint('Error fetching role: $e');
-      _userRole = UserRole.user;
-      _userName = user.email ?? '';
+      if (_userRole == null) {
+        _userRole = UserRole.user;
+        _userName = user.email ?? '';
+      }
     }
   }
 
@@ -171,6 +199,13 @@ class AuthProvider extends ChangeNotifier {
     // Remove FCM token so user stops receiving notifications after logout
     final uid = _currentUser?.uid ?? '';
     await NotificationService().deleteToken(uid);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('cached_user_role');
+      await prefs.remove('cached_user_name');
+    } catch (e) {
+      debugPrint('Error clearing cache: $e');
+    }
     await _auth.signOut();
   }
 }
