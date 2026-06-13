@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
+import '../theme/hospital_colors.dart';
 
 class CalendarPicker extends StatelessWidget {
   final DateTime selectedDate;
@@ -42,16 +43,16 @@ class CalendarPicker extends StatelessWidget {
               margin: const EdgeInsets.only(right: 12, top: 4, bottom: 4),
               width: 70,
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.surface,
+                color: isSelected ? HospitalColors.primary : AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.border,
+                  color: isSelected ? HospitalColors.primary : AppColors.border,
                   width: 1.5,
                 ),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.3),
+                          color: HospitalColors.primary.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),

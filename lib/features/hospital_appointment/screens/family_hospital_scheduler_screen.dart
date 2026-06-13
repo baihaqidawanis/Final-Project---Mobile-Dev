@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../auth/services/auth_provider.dart';
 import '../models/appointment_model.dart';
 import '../services/hospital_firestore_service.dart';
+import '../theme/hospital_colors.dart';
 import '../widgets/calendar_picker.dart';
 import '../widgets/cinema_seat_grid.dart';
 
@@ -233,7 +234,7 @@ class _FamilyHospitalSchedulerScreenState
                               isExpanded: true,
                               icon: const Icon(
                                 Icons.keyboard_arrow_down_rounded,
-                                color: AppColors.primary,
+                                color: HospitalColors.primary,
                               ),
                               style: const TextStyle(
                                 fontSize: 14,
@@ -329,7 +330,7 @@ class _FamilyHospitalSchedulerScreenState
                             borderRadius: BorderRadius.circular(12),
                             side: const BorderSide(color: AppColors.border),
                           ),
-                          color: AppColors.primary.withValues(alpha: 0.05),
+                          color: HospitalColors.primary.withValues(alpha: 0.05),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
@@ -339,7 +340,7 @@ class _FamilyHospitalSchedulerScreenState
                               children: [
                                 const Icon(
                                   Icons.wb_sunny_rounded,
-                                  color: AppColors.primary,
+                                  color: HospitalColors.primary,
                                   size: 20,
                                 ),
                                 const SizedBox(width: 8),
@@ -357,7 +358,7 @@ class _FamilyHospitalSchedulerScreenState
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
-                                      color: AppColors.primary,
+                                      color: HospitalColors.primary,
                                     ),
                                   ),
                                 ),
@@ -436,7 +437,7 @@ class _FamilyHospitalSchedulerScreenState
             style: ElevatedButton.styleFrom(
               backgroundColor: _selectedSlot == null || _selectedHospitalId == null
                   ? AppColors.border
-                  : AppColors.primary,
+                  : HospitalColors.primary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               elevation: 0,
             ),

@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../auth/services/auth_provider.dart';
 import '../models/appointment_model.dart';
 import '../services/hospital_firestore_service.dart';
+import '../theme/hospital_colors.dart';
 
 class HospitalAdminDashboardScreen extends StatefulWidget {
   const HospitalAdminDashboardScreen({super.key});
@@ -101,7 +102,7 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.chevron_left, color: AppColors.primary),
+                        icon: const Icon(Icons.chevron_left, color: HospitalColors.primary),
                         tooltip: 'Hari Sebelumnya',
                         onPressed: () {
                           setState(() {
@@ -110,7 +111,7 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                         },
                       ),
                       IconButton(
-                        icon: const Icon(Icons.date_range_rounded, color: AppColors.primary),
+                        icon: const Icon(Icons.date_range_rounded, color: HospitalColors.primary),
                         tooltip: 'Pilih Tanggal',
                         onPressed: () async {
                           final picked = await showDatePicker(
@@ -122,7 +123,7 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                               return Theme(
                                 data: Theme.of(context).copyWith(
                                   colorScheme: const ColorScheme.light(
-                                    primary: AppColors.primary,
+                                    primary: HospitalColors.primary,
                                     onPrimary: Colors.white,
                                     onSurface: AppColors.textPrimary,
                                   ),
@@ -139,7 +140,7 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                         },
                       ),
                       IconButton(
-                        icon: const Icon(Icons.chevron_right, color: AppColors.primary),
+                        icon: const Icon(Icons.chevron_right, color: HospitalColors.primary),
                         tooltip: 'Hari Berikutnya',
                         onPressed: () {
                           setState(() {
@@ -225,14 +226,14 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  color: HospitalColors.primary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Column(
                                   children: [
                                     const Icon(
                                       Icons.access_time_filled_rounded,
-                                      color: AppColors.primary,
+                                      color: HospitalColors.primary,
                                       size: 18,
                                     ),
                                     const SizedBox(height: 4),
@@ -241,7 +242,7 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                                       style: const TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
+                                        color: HospitalColors.primary,
                                       ),
                                     ),
                                   ],
