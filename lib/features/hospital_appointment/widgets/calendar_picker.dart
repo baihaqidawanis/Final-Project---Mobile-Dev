@@ -16,10 +16,22 @@ class CalendarPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
-    
-    // Generate next 14 days (including today)
+    final todayStart = DateTime(today.year, today.month, today.day);
+    final selectedStart = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+
+    final difference = selectedStart.difference(todayStart).inDays;
+    final DateTime startBase;
+    if (difference < 0) {
+      startBase = selectedStart;
+    } else if (difference > 10) {
+      // Shift base so selectedDate is positioned around the 4th item in the row for context
+      startBase = selectedStart.subtract(const Duration(days: 3));
+    } else {
+      startBase = todayStart;
+    }
+
     final List<DateTime> dates = List.generate(14, (index) {
-      return DateTime(today.year, today.month, today.day + index);
+      return DateTime(startBase.year, startBase.month, startBase.day + index);
     });
 
     return SizedBox(

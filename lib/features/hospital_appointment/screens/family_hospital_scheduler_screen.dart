@@ -29,12 +29,17 @@ class _FamilyHospitalSchedulerScreenState
   String? _selectedSlot;
   bool _isBooking = false;
   String _weatherForecast = 'Loading weather...';
+  late final Stream<QuerySnapshot> _hospitalsStream;
 
   @override
   void initState() {
     super.initState();
     _selectedDate = DateTime.now();
     _fetchWeather();
+    _hospitalsStream = FirebaseFirestore.instance
+        .collection('users')
+        .where('role', isEqualTo: 'hospital')
+        .snapshots();
   }
 
   String _formatDateString(DateTime date) {
@@ -110,6 +115,193 @@ class _FamilyHospitalSchedulerScreenState
     }
   }
 
+  void _showHospitalSearchBottomSheet(
+    BuildContext context,
+    List<Map<String, String>> hospitals,
+  ) {
+    String searchQuery = '';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final filteredHospitals = hospitals.where((hospital) {
+              final name = hospital['name']?.toLowerCase() ?? '';
+              return name.contains(searchQuery.toLowerCase());
+            }).toList();
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.75,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle Bar
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Title and Close Button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Pilih Rumah Sakit',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Search Input
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: TextField(
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: 'Cari rumah sakit...',
+                          prefixIcon: const Icon(
+                            Icons.search_rounded,
+                            color: HospitalColors.primary,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.background,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onChanged: (value) {
+                          setModalState(() {
+                            searchQuery = value;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // List of hospitals
+                    Flexible(
+                      child: filteredHospitals.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.local_hospital_outlined,
+                                    size: 48,
+                                    color: AppColors.textSecondary.withValues(alpha: 0.3),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'Tidak ada rumah sakit yang cocok',
+                                    style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                              itemCount: filteredHospitals.length,
+                              itemBuilder: (context, index) {
+                                final hospital = filteredHospitals[index];
+                                final isSelected = hospital['id'] == _selectedHospitalId;
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? HospitalColors.primary.withValues(alpha: 0.05)
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? HospitalColors.primary
+                                          : AppColors.border,
+                                      width: isSelected ? 1.5 : 1.0,
+                                    ),
+                                  ),
+                                  child: ListTile(
+                                    leading: Icon(
+                                      Icons.local_hospital_outlined,
+                                      color: isSelected
+                                          ? HospitalColors.primary
+                                          : AppColors.textSecondary,
+                                    ),
+                                    title: Text(
+                                      hospital['name']!,
+                                      style: TextStyle(
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                        color: isSelected
+                                            ? HospitalColors.primary
+                                            : AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    trailing: isSelected
+                                        ? const Icon(
+                                            Icons.check_circle_rounded,
+                                            color: HospitalColors.primary,
+                                          )
+                                        : null,
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedHospitalId = hospital['id'];
+                                        _selectedSlot = null; // Reset selection
+                                      });
+                                      _fetchWeather();
+                                      Navigator.pop(context);
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
@@ -125,10 +317,7 @@ class _FamilyHospitalSchedulerScreenState
       ),
       body: SafeArea(
         child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('users')
-              .where('role', isEqualTo: 'hospital')
-              .snapshots(),
+          stream: _hospitalsStream,
           builder: (context, hospitalSnapshot) {
             if (hospitalSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -202,7 +391,7 @@ class _FamilyHospitalSchedulerScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Hospital Dropdown Section
+                  // 1. Hospital Dropdown Section (Searchable Bottom Sheet)
                   Container(
                     padding: const EdgeInsets.all(20),
                     color: Colors.white,
@@ -218,43 +407,42 @@ class _FamilyHospitalSchedulerScreenState
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: _selectedHospitalId,
-                              isExpanded: true,
-                              icon: const Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                color: HospitalColors.primary,
-                              ),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                              ),
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setState(() {
-                                    _selectedHospitalId = val;
-                                    _selectedSlot = null; // Reset selection
-                                  });
-                                }
-                              },
-                              items: hospitals.map((hospital) {
-                                return DropdownMenuItem<String>(
-                                  value: hospital['id'],
-                                  child: Text(hospital['name']!),
-                                );
-                              }).toList(),
+                        InkWell(
+                          onTap: () => _showHospitalSearchBottomSheet(context, hospitals),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.local_hospital_outlined,
+                                  color: HospitalColors.primary,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    selectedHospitalName,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  color: HospitalColors.primary,
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -264,15 +452,76 @@ class _FamilyHospitalSchedulerScreenState
                   const SizedBox(height: 12),
 
                   // 2. Date Selection Section
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    child: Text(
-                      'Pilih Tanggal',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Pilih Tanggal Kunjungan',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              DateFormat('EEEE, d MMMM yyyy').format(_selectedDate),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: HospitalColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: HospitalColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.calendar_month_rounded),
+                            color: HospitalColors.primary,
+                            onPressed: () async {
+                              final DateTime? picked = await showDatePicker(
+                                context: context,
+                                initialDate: _selectedDate,
+                                firstDate: DateTime.now(),
+                                lastDate: DateTime.now().add(const Duration(days: 90)),
+                                builder: (context, child) {
+                                  return Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: const ColorScheme.light(
+                                        primary: HospitalColors.primary,
+                                        onPrimary: Colors.white,
+                                        onSurface: AppColors.textPrimary,
+                                      ),
+                                      textButtonTheme: TextButtonThemeData(
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: HospitalColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                    child: child!,
+                                  );
+                                },
+                              );
+                              if (picked != null && picked != _selectedDate) {
+                                setState(() {
+                                  _selectedDate = picked;
+                                  _selectedSlot = null; // Reset selected time slot when date changes
+                                });
+                                _fetchWeather();
+                              }
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   CalendarPicker(
@@ -402,7 +651,11 @@ class _FamilyHospitalSchedulerScreenState
                               selectedSlot: _selectedSlot,
                               onSlotSelected: (slot) {
                                 setState(() {
-                                  _selectedSlot = slot;
+                                  if (_selectedSlot == slot) {
+                                    _selectedSlot = null;
+                                  } else {
+                                    _selectedSlot = slot;
+                                  }
                                 });
                               },
                             );
