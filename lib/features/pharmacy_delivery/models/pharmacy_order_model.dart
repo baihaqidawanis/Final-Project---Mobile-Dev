@@ -1,7 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-// pending → accepted (apotek terima & kemas) → shipped (dikirim)
-// → delivered (customer konfirmasi) | cancelled
 enum PharmacyOrderStatus { pending, accepted, shipped, delivered, cancelled }
 
 class OrderItem {
@@ -18,15 +14,15 @@ class OrderItem {
   });
 
   Map<String, dynamic> toMap() => {
-    'medicineId': medicineId,
-    'medicineName': medicineName,
+    'medicine_id': medicineId,
+    'medicine_name': medicineName,
     'price': price,
     'quantity': quantity,
   };
 
   factory OrderItem.fromMap(Map<String, dynamic> data) => OrderItem(
-    medicineId: data['medicineId'] ?? '',
-    medicineName: data['medicineName'] ?? '',
+    medicineId: data['medicine_id'] ?? data['medicineId'] ?? '',
+    medicineName: data['medicine_name'] ?? data['medicineName'] ?? '',
     price: (data['price'] ?? 0).toDouble(),
     quantity: data['quantity'] ?? 1,
   );
@@ -70,7 +66,7 @@ class PharmacyOrderModel {
   static PharmacyOrderStatus _parseStatus(String? s) {
     switch (s) {
       case 'accepted':
-      case 'processing': // backward compat
+      case 'processing':
         return PharmacyOrderStatus.accepted;
       case 'shipped':
         return PharmacyOrderStatus.shipped;
@@ -98,50 +94,53 @@ class PharmacyOrderModel {
     }
   }
 
-  factory PharmacyOrderModel.fromFirestore(
-    DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
-    final data = doc.data()!;
+  factory PharmacyOrderModel.fromMap(Map<String, dynamic> data) {
     final itemsList = (data['items'] as List<dynamic>? ?? [])
         .map((e) => OrderItem.fromMap(e as Map<String, dynamic>))
         .toList();
     return PharmacyOrderModel(
-      orderId: doc.id,
-      userId: data['userId'] ?? '',
-      userName: data['userName'] ?? '',
-      pharmacyId: data['pharmacyId'] ?? '',
-      pharmacyName: data['pharmacyName'] ?? '',
+      orderId: data['id'] ?? '',
+      userId: data['user_id'] ?? data['userId'] ?? '',
+      userName: data['user_name'] ?? data['userName'] ?? '',
+      pharmacyId: data['pharmacy_id'] ?? data['pharmacyId'] ?? '',
+      pharmacyName: data['pharmacy_name'] ?? data['pharmacyName'] ?? '',
       items: itemsList,
-      totalPrice: (data['totalPrice'] ?? 0).toDouble(),
-      deliveryAddress: data['deliveryAddress'] ?? '',
+      totalPrice: (data['total_price'] ?? data['totalPrice'] ?? 0).toDouble(),
+      deliveryAddress: data['delivery_address'] ?? data['deliveryAddress'] ?? '',
       notes: data['notes'] ?? '',
-      prescriptionImageUrl: data['prescriptionImageUrl'] as String?,
-      prescriptionImagePath: data['prescriptionImagePath'] as String?,
+      prescriptionImageUrl: data['prescription_url'] ?? data['prescriptionImageUrl'] as String?,
+      prescriptionImagePath: data['prescription_path'] ?? data['prescriptionImagePath'] as String?,
       status: _parseStatus(data['status']),
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      rating: data['rating'] != null
-          ? (data['rating'] as num).toDouble()
-          : null,
+      createdAt: data['created_at'] != null
+          ? DateTime.parse(data['created_at'] as String)
+          : DateTime.now(),
+      rating: data['rating'] != null ? (data['rating'] as num).toDouble() : null,
       review: data['review'] as String?,
     );
   }
 
-  Map<String, dynamic> toMap() => {
-    'userId': userId,
-    'userName': userName,
-    'pharmacyId': pharmacyId,
-    'pharmacyName': pharmacyName,
-    'items': items.map((e) => e.toMap()).toList(),
-    'totalPrice': totalPrice,
-    'deliveryAddress': deliveryAddress,
-    'notes': notes,
-    if (prescriptionImageUrl != null)
-      'prescriptionImageUrl': prescriptionImageUrl,
-    if (prescriptionImagePath != null)
-      'prescriptionImagePath': prescriptionImagePath,
-    'status': statusToString(status),
-    'createdAt': Timestamp.fromDate(createdAt),
-    if (rating != null) 'rating': rating,
-    if (review != null) 'review': review,
-  };
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{
+      'user_id': userId,
+      'user_name': userName,
+      'pharmacy_id': pharmacyId,
+      'pharmacy_name': pharmacyName,
+      'items': items.map((e) => e.toMap()).toList(),
+      'total_price': totalPrice,
+      'delivery_address': deliveryAddress,
+      'notes': notes,
+      if (prescriptionImageUrl != null)
+        'prescription_url': prescriptionImageUrl,
+      if (prescriptionImagePath != null)
+        'prescription_path': prescriptionImagePath,
+      'status': statusToString(status),
+      'created_at': createdAt.toIso8601String(),
+      if (rating != null) 'rating': rating,
+      if (review != null) 'review': review,
+    };
+    if (orderId.isNotEmpty) {
+      map['id'] = orderId;
+    }
+    return map;
+  }
 }

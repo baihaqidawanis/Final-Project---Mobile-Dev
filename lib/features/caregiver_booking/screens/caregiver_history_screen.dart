@@ -14,7 +14,7 @@ class CaregiverHistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final uid = context.watch<AuthProvider>().currentUser?.uid ?? '';
+    final uid = context.watch<AuthProvider>().currentUser?.id ?? '';
     final service = CaregiverFirestoreService();
 
     return Scaffold(

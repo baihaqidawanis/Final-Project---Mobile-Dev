@@ -165,7 +165,7 @@ class _CaregiverListScreenState extends State<CaregiverListScreen> {
                       MaterialPageRoute(
                         builder: (_) => CaregiverDetailScreen(
                           caregiver: filtered[i],
-                          familyId: auth.currentUser?.uid ?? '',
+                          familyId: auth.currentUser?.id ?? '',
                           familyName: auth.userName.isNotEmpty
                               ? auth.userName
                               : (auth.currentUser?.email ?? 'Pengguna'),

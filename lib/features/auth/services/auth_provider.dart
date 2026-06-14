@@ -1,15 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/services/notification_service.dart';
-import '../models/user_model.dart';
 
 enum UserRole { admin, user, caregiver, hospital, pharmacy }
 
 class AuthProvider extends ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
   User? _currentUser;
   UserRole? _userRole;
@@ -21,7 +18,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isLoggedIn => _currentUser != null;
 
-  /// Display name fetched from Firestore /users/{uid}.name
+  /// Display name fetched from public.profiles.name
   String get userName => _userName;
 
   AuthProvider() {
@@ -42,7 +39,9 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error loading cached role: $e');
     }
-    _auth.authStateChanges().listen(_onAuthStateChanged);
+    _supabase.auth.onAuthStateChange.listen((data) {
+      _onAuthStateChanged(data.session?.user);
+    });
   }
 
   Future<void> _onAuthStateChanged(User? user) async {
@@ -50,7 +49,7 @@ class AuthProvider extends ChangeNotifier {
     if (user != null) {
       await _fetchOrCreateUserRole(user);
       // Save FCM token so this user can receive push notifications
-      await NotificationService().saveTokenToFirestore(user.uid);
+      await NotificationService().saveTokenToFirestore(user.id);
     } else {
       _userRole = null;
       _userName = '';
@@ -61,23 +60,28 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _fetchOrCreateUserRole(User user) async {
     try {
-      final doc = await _db.collection('users').doc(user.uid).get();
+      final data = await _supabase
+          .from('profiles')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
+
       final prefs = await SharedPreferences.getInstance();
-      if (doc.exists) {
-        final roleStr = doc.data()?['role'];
+      if (data != null) {
+        final roleStr = data['role'] as String?;
         _userRole = _parseRole(roleStr);
-        _userName = doc.data()?['name'] ?? user.email ?? '';
+        _userName = data['name'] as String? ?? user.email ?? '';
         await prefs.setString('cached_user_role', roleStr ?? 'user');
         await prefs.setString('cached_user_name', _userName);
       } else if (user.email == 'admin@mail.com') {
         // Auto-assign admin role on first login
-        await _db.collection('users').doc(user.uid).set({
-          'uid': user.uid,
+        final adminData = {
+          'id': user.id,
           'name': 'Super Admin',
-          'email': user.email,
+          'email': user.email ?? 'admin@mail.com',
           'role': 'admin',
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        };
+        await _supabase.from('profiles').upsert(adminData);
         _userRole = UserRole.admin;
         _userName = 'Super Admin';
         await prefs.setString('cached_user_role', 'admin');
@@ -114,18 +118,19 @@ class AuthProvider extends ChangeNotifier {
     required String password,
   }) async {
     try {
-      final cred = await _auth.createUserWithEmailAndPassword(
-          email: email, password: password);
-      await _db.collection('users').doc(cred.user!.uid).set(UserModel(
-        uid: cred.user!.uid,
-        name: name,
+      await _supabase.auth.signUp(
         email: email,
-        role: 'user',
-        createdAt: DateTime.now(),
-      ).toMap());
+        password: password,
+        data: {
+          'name': name,
+          'role': 'user',
+        },
+      );
       return null;
-    } on FirebaseAuthException catch (e) {
-      return e.message ?? 'Registration failed';
+    } on AuthException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
     }
   }
 
@@ -138,48 +143,53 @@ class AuthProvider extends ChangeNotifier {
     Map<String, dynamic>? mitraProfile,
   }) async {
     try {
-      final cred = await _auth.createUserWithEmailAndPassword(
-          email: email, password: password);
-      final uid = cred.user!.uid;
-
-      // Write user doc
-      await _db.collection('users').doc(uid).set(UserModel(
-        uid: uid,
-        name: name,
+      final res = await _supabase.auth.signUp(
         email: email,
-        role: role,
-        createdAt: DateTime.now(),
-      ).toMap());
-
-      // Write caregiver profile doc if role is caregiver
-      if (role == 'caregiver' && mitraProfile != null) {
-        await _db.collection('caregivers').doc(uid).set({
+        password: password,
+        data: {
           'name': name,
-          'photoUrl': '',
-          'isAvailable': true,
+          'role': role,
+        },
+      );
+      final uid = res.user?.id;
+      if (uid == null) {
+        return 'Registration failed: User ID not generated';
+      }
+
+      // Write caregiver profile if role is caregiver
+      if (role == 'caregiver' && mitraProfile != null) {
+        await _supabase.from('caregivers').insert({
+          'id': uid,
+          'name': name,
+          'photo_url': '',
+          'is_available': true,
           'rating': 0.0,
-          'totalReviews': 0,
-          ...mitraProfile,
+          'total_reviews': 0,
+          'skills': mitraProfile['skills'] ?? '',
+          'description': mitraProfile['description'] ?? '',
         });
       }
 
-      // Write pharmacy profile doc if role is pharmacy
+      // Write pharmacy profile if role is pharmacy
       if (role == 'pharmacy') {
-        await _db.collection('pharmacies').doc(uid).set({
+        await _supabase.from('pharmacies').insert({
+          'id': uid,
           'name': name,
           'address': '',
           'area': '',
           'phone': '',
-          'openHours': '08:00 - 21:00',
-          'photoUrl': '',
-          'isOpen': true,
+          'open_hours': '08:00 - 21:00',
+          'photo_url': '',
+          'is_open': true,
           'rating': 0.0,
-          'totalReviews': 0,
+          'total_reviews': 0,
         });
       }
       return null;
-    } on FirebaseAuthException catch (e) {
-      return e.message ?? 'Registration failed';
+    } on AuthException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
     }
   }
 
@@ -188,16 +198,17 @@ class AuthProvider extends ChangeNotifier {
     required String password,
   }) async {
     try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      await _supabase.auth.signInWithPassword(email: email, password: password);
       return null;
-    } on FirebaseAuthException catch (e) {
-      return e.message ?? 'Login failed';
+    } on AuthException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
     }
   }
 
   Future<void> logout() async {
-    // Remove FCM token so user stops receiving notifications after logout
-    final uid = _currentUser?.uid ?? '';
+    final uid = _currentUser?.id ?? '';
     await NotificationService().deleteToken(uid);
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -206,6 +217,6 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error clearing cache: $e');
     }
-    await _auth.signOut();
+    await _supabase.auth.signOut();
   }
 }

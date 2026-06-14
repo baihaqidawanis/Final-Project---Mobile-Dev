@@ -14,7 +14,7 @@ class MyBookingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final uid = auth.currentUser?.uid ?? '';
+    final uid = auth.currentUser?.id ?? '';
     final service = CaregiverFirestoreService();
 
     return Scaffold(

@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class CaregiverProfileModel {
   final String uid;
   final String name;
@@ -25,34 +23,33 @@ class CaregiverProfileModel {
     required this.isAvailable,
   });
 
-  factory CaregiverProfileModel.fromFirestore(
-      DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data()!;
+  factory CaregiverProfileModel.fromMap(Map<String, dynamic> data) {
     return CaregiverProfileModel(
-      uid: doc.id,
+      uid: data['id'] ?? data['uid'] ?? '',
       name: data['name'] ?? '',
       specialization: data['specialization'] ?? '',
-      pricePerHour: (data['pricePerHour'] ?? 0).toDouble(),
+      pricePerHour: (data['price_per_hour'] ?? data['pricePerHour'] ?? 0).toDouble(),
       rating: (data['rating'] ?? 0).toDouble(),
-      totalReviews: data['totalReviews'] ?? 0,
-      photoUrl: data['photoUrl'] ?? '',
+      totalReviews: data['total_reviews'] ?? data['totalReviews'] ?? 0,
+      photoUrl: data['photo_url'] ?? data['photoUrl'] ?? '',
       bio: data['bio'] ?? '',
       area: data['area'] ?? '',
-      isAvailable: data['isAvailable'] ?? true,
+      isAvailable: data['is_available'] ?? data['isAvailable'] ?? true,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
+      'id': uid,
       'name': name,
       'specialization': specialization,
-      'pricePerHour': pricePerHour,
+      'price_per_hour': pricePerHour,
       'rating': rating,
-      'totalReviews': totalReviews,
-      'photoUrl': photoUrl,
+      'total_reviews': totalReviews,
+      'photo_url': photoUrl,
       'bio': bio,
       'area': area,
-      'isAvailable': isAvailable,
+      'is_available': isAvailable,
     };
   }
 }

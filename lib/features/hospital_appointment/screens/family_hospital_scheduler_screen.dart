@@ -1,7 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../app_config.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../auth/services/auth_provider.dart';
@@ -29,7 +29,7 @@ class _FamilyHospitalSchedulerScreenState
   String? _selectedSlot;
   bool _isBooking = false;
   String _weatherForecast = 'Loading weather...';
-  late final Stream<QuerySnapshot> _hospitalsStream;
+  late final Stream<List<Map<String, dynamic>>> _hospitalsStream;
 
   String? _lastQueriedHospitalId;
   String? _lastQueriedDateString;
@@ -43,10 +43,10 @@ class _FamilyHospitalSchedulerScreenState
     super.initState();
     _selectedDate = DateTime.now();
     _fetchWeather();
-    _hospitalsStream = FirebaseFirestore.instance
-        .collection('users')
-        .where('role', isEqualTo: 'hospital')
-        .snapshots();
+    _hospitalsStream = Supabase.instance.client
+        .from('profiles')
+        .stream(primaryKey: ['id'])
+        .eq('role', 'hospital');
   }
 
   @override
@@ -560,9 +560,9 @@ class _FamilyHospitalSchedulerScreenState
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
-    final familyId = auth.currentUser?.uid ?? '';
+    final familyId = auth.currentUser?.id ?? '';
 
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _hospitalsStream,
       builder: (context, hospitalSnapshot) {
         if (hospitalSnapshot.connectionState == ConnectionState.waiting) {
@@ -588,12 +588,11 @@ class _FamilyHospitalSchedulerScreenState
           );
         }
 
-        final docs = hospitalSnapshot.data?.docs ?? [];
-        final hospitals = docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
+        final dataList = hospitalSnapshot.data ?? [];
+        final hospitals = dataList.map((row) {
           return {
-            'id': doc.id,
-            'name': data['name'] as String? ?? 'Rumah Sakit Tanpa Nama',
+            'id': row['id'] as String? ?? '',
+            'name': row['name'] as String? ?? 'Rumah Sakit Tanpa Nama',
           };
         }).toList();
 

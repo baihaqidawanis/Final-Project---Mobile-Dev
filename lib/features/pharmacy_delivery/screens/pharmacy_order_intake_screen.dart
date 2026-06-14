@@ -73,7 +73,7 @@ class _PharmacyOrderIntakeScreenState extends State<PharmacyOrderIntakeScreen>
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final uid = auth.currentUser?.uid ?? '';
+    final uid = auth.currentUser?.id ?? '';
 
     return Scaffold(
       backgroundColor: AppColors.background,

@@ -773,7 +773,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
       final prescriptionImage = _prescriptionImage;
       if (prescriptionBytes != null && prescriptionImage != null) {
         prescriptionUpload = await widget.service.uploadPrescriptionImage(
-          userId: user.uid,
+          userId: user.id,
           pharmacyId: widget.pharmacy.uid,
           fileName: prescriptionImage.name,
           bytes: prescriptionBytes,
@@ -793,7 +793,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
 
       final order = PharmacyOrderModel(
         orderId: '',
-        userId: user.uid,
+        userId: user.id,
         userName: user.email ?? '',
         pharmacyId: widget.pharmacy.uid,
         pharmacyName: widget.pharmacy.name,

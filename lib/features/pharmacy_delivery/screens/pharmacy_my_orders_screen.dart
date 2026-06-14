@@ -29,7 +29,7 @@ class PharmacyMyOrdersScreen extends StatelessWidget {
         ),
       ),
       body: StreamBuilder<List<PharmacyOrderModel>>(
-        stream: service.getOrdersByUser(auth.currentUser?.uid ?? ''),
+        stream: service.getOrdersByUser(auth.currentUser?.id ?? ''),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

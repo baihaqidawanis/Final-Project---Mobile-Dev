@@ -312,7 +312,7 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final hospitalId = auth.currentUser!.uid;
+    final hospitalId = auth.currentUser!.id;
 
     return Scaffold(
       backgroundColor: AppColors.background,

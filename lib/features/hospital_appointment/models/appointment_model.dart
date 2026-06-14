@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class AppointmentModel {
   final String appointmentId;
   final String familyId;
@@ -21,46 +19,33 @@ class AppointmentModel {
     this.symptoms = '',
   });
 
-  factory AppointmentModel.fromMap(
-    Map<String, dynamic> data,
-    String documentId,
-  ) {
+  factory AppointmentModel.fromMap(Map<String, dynamic> data) {
     return AppointmentModel(
-      appointmentId: documentId,
-      familyId: data['familyId'] ?? '',
-      hospitalId: data['hospitalId'] ?? '',
-      dateString: data['dateString'] ?? '',
-      timeSlot: data['timeSlot'] ?? '',
+      appointmentId: data['id'] ?? '',
+      familyId: data['family_id'] ?? '',
+      hospitalId: data['hospital_id'] ?? '',
+      dateString: data['date_string'] ?? '',
+      timeSlot: data['time_slot'] ?? '',
       status: data['status'] ?? 'pending',
-      patientName: data['patientName'] ?? '',
-      symptoms: data['symptoms'] ?? '',
-    );
-  }
-
-  factory AppointmentModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? {};
-    return AppointmentModel(
-      appointmentId: doc.id,
-      familyId: data['familyId'] ?? '',
-      hospitalId: data['hospitalId'] ?? '',
-      dateString: data['dateString'] ?? '',
-      timeSlot: data['timeSlot'] ?? '',
-      status: data['status'] ?? 'pending',
-      patientName: data['patientName'] ?? '',
+      patientName: data['patient_name'] ?? '',
       symptoms: data['symptoms'] ?? '',
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'familyId': familyId,
-      'hospitalId': hospitalId,
-      'dateString': dateString,
-      'timeSlot': timeSlot,
+    final map = <String, dynamic>{
+      'family_id': familyId,
+      'hospital_id': hospitalId,
+      'date_string': dateString,
+      'time_slot': timeSlot,
       'status': status,
-      'patientName': patientName,
+      'patient_name': patientName,
       'symptoms': symptoms,
     };
+    if (appointmentId.isNotEmpty) {
+      map['id'] = appointmentId;
+    }
+    return map;
   }
 
   AppointmentModel copyWith({

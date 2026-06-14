@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class MedicineModel {
   final String id;
   final String pharmacyId;
@@ -19,26 +17,30 @@ class MedicineModel {
     required this.isAvailable,
   });
 
-  factory MedicineModel.fromFirestore(
-      DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data()!;
+  factory MedicineModel.fromMap(Map<String, dynamic> data) {
     return MedicineModel(
-      id: doc.id,
-      pharmacyId: data['pharmacyId'] ?? '',
+      id: data['id'] ?? '',
+      pharmacyId: data['pharmacy_id'] ?? data['pharmacyId'] ?? '',
       name: data['name'] ?? '',
       description: data['description'] ?? '',
       price: (data['price'] ?? 0).toDouble(),
       category: data['category'] ?? 'Umum',
-      isAvailable: data['isAvailable'] ?? true,
+      isAvailable: data['is_available'] ?? data['isAvailable'] ?? true,
     );
   }
 
-  Map<String, dynamic> toMap() => {
-        'pharmacyId': pharmacyId,
-        'name': name,
-        'description': description,
-        'price': price,
-        'category': category,
-        'isAvailable': isAvailable,
-      };
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{
+      'pharmacy_id': pharmacyId,
+      'name': name,
+      'description': description,
+      'price': price,
+      'category': category,
+      'is_available': isAvailable,
+    };
+    if (id.isNotEmpty) {
+      map['id'] = id;
+    }
+    return map;
+  }
 }
