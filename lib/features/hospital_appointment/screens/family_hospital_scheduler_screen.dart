@@ -31,6 +31,13 @@ class _FamilyHospitalSchedulerScreenState
   String _weatherForecast = 'Loading weather...';
   late final Stream<QuerySnapshot> _hospitalsStream;
 
+  String? _lastQueriedHospitalId;
+  String? _lastQueriedDateString;
+  Stream<List<AppointmentModel>>? _agendaStream;
+
+  final TextEditingController _patientNameController = TextEditingController();
+  final TextEditingController _symptomsController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +47,13 @@ class _FamilyHospitalSchedulerScreenState
         .collection('users')
         .where('role', isEqualTo: 'hospital')
         .snapshots();
+  }
+
+  @override
+  void dispose() {
+    _patientNameController.dispose();
+    _symptomsController.dispose();
+    super.dispose();
   }
 
   String _formatDateString(DateTime date) {
@@ -84,6 +98,8 @@ class _FamilyHospitalSchedulerScreenState
       dateString: _formatDateString(_selectedDate),
       timeSlot: _selectedSlot!,
       status: 'booked',
+      patientName: _patientNameController.text.trim(),
+      symptoms: _symptomsController.text.trim(),
     );
 
     try {
@@ -91,6 +107,8 @@ class _FamilyHospitalSchedulerScreenState
       if (mounted) {
         setState(() {
           _selectedSlot = null;
+          _patientNameController.clear();
+          _symptomsController.clear();
           _isBooking = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -302,92 +320,350 @@ class _FamilyHospitalSchedulerScreenState
     );
   }
 
+  void _showBookingConfirmationModal(
+    BuildContext context,
+    String familyId,
+    String selectedHospitalName,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                ),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Handle Bar
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppColors.border,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Title
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Konfirmasi Janji Temu',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
+                        ),
+                        const Divider(),
+                        const SizedBox(height: 12),
+
+                        // Booking summary details
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: HospitalColors.primary.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: HospitalColors.primary.withValues(alpha: 0.15),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.local_hospital_rounded, color: HospitalColors.primary),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      selectedHospitalName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  const Icon(Icons.calendar_month_rounded, color: HospitalColors.primary),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      DateFormat('EEEE, d MMMM yyyy').format(_selectedDate),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  const Icon(Icons.access_time_filled_rounded, color: HospitalColors.primary),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Slot Waktu: $_selectedSlot',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                        color: HospitalColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Patient Name input field
+                        const Text(
+                          'Nama Pasien',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _patientNameController,
+                          decoration: InputDecoration(
+                            hintText: 'Masukkan nama pasien...',
+                            prefixIcon: const Icon(
+                              Icons.person_outline_rounded,
+                              color: HospitalColors.primary,
+                            ),
+                            filled: true,
+                            fillColor: AppColors.background,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Complaint / Symptoms input field
+                        const Text(
+                          'Keluhan Utama / Gejala',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _symptomsController,
+                          maxLines: 3,
+                          decoration: InputDecoration(
+                            hintText: 'Tuliskan keluhan atau gejala yang dialami...',
+                            filled: true,
+                            fillColor: AppColors.background,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.all(12),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Action Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: HospitalColors.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            onPressed: _isBooking
+                                ? null
+                                : () async {
+                                    setModalState(() {});
+                                    Navigator.pop(context);
+                                    await _handleBookAppointment(familyId);
+                                  },
+                            child: _isBooking
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Konfirmasi Jadwal',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final familyId = auth.currentUser?.uid ?? '';
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Jadwalkan Janji Temu'),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 0.5,
-      ),
-      body: SafeArea(
-        child: StreamBuilder<QuerySnapshot>(
-          stream: _hospitalsStream,
-          builder: (context, hospitalSnapshot) {
-            if (hospitalSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+    return StreamBuilder<QuerySnapshot>(
+      stream: _hospitalsStream,
+      builder: (context, hospitalSnapshot) {
+        if (hospitalSnapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: AppColors.background,
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-            if (hospitalSnapshot.hasError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Text(
-                    'Gagal memuat daftar rumah sakit: ${hospitalSnapshot.error}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.cancelled),
-                  ),
+        if (hospitalSnapshot.hasError) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text(
+                  'Gagal memuat daftar rumah sakit: ${hospitalSnapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.cancelled),
                 ),
-              );
-            }
+              ),
+            ),
+          );
+        }
 
-            final docs = hospitalSnapshot.data?.docs ?? [];
-            final hospitals = docs.map((doc) {
-              final data = doc.data() as Map<String, dynamic>;
-              return {
-                'id': doc.id,
-                'name': data['name'] as String? ?? 'Rumah Sakit Tanpa Nama',
-              };
-            }).toList();
+        final docs = hospitalSnapshot.data?.docs ?? [];
+        final hospitals = docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return {
+            'id': doc.id,
+            'name': data['name'] as String? ?? 'Rumah Sakit Tanpa Nama',
+          };
+        }).toList();
 
-            if (hospitals.isEmpty) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.local_hospital_outlined,
-                        size: 64,
-                        color: AppColors.textSecondary.withValues(alpha: 0.4),
+        if (hospitals.isEmpty) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.local_hospital_outlined,
+                      size: 64,
+                      color: AppColors.textSecondary.withValues(alpha: 0.4),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Belum ada rumah sakit terdaftar',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Belum ada rumah sakit terdaftar',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              );
-            }
+              ),
+            ),
+          );
+        }
 
-            // Auto-initialize selected hospital
-            if (!_selectedHospitalIdInitialized) {
-              _selectedHospitalId = hospitals.first['id'];
-              _selectedHospitalIdInitialized = true;
-            }
+        // Auto-initialize selected hospital
+        if (!_selectedHospitalIdInitialized) {
+          _selectedHospitalId = hospitals.first['id'];
+          _selectedHospitalIdInitialized = true;
+        }
 
-            // Verify selected hospital is still in list (handles deletions gracefully)
-            if (!hospitals.any((h) => h['id'] == _selectedHospitalId)) {
-              _selectedHospitalId = hospitals.first['id'];
-            }
+        // Verify selected hospital is still in list (handles deletions gracefully)
+        if (!hospitals.any((h) => h['id'] == _selectedHospitalId)) {
+          _selectedHospitalId = hospitals.first['id'];
+        }
 
-            final selectedHospitalName = hospitals.firstWhere(
-              (h) => h['id'] == _selectedHospitalId,
-            )['name']!;
+        final selectedHospitalName = hospitals.firstWhere(
+          (h) => h['id'] == _selectedHospitalId,
+        )['name']!;
 
-            return SingleChildScrollView(
+        final currentDateString = _formatDateString(_selectedDate);
+        if (_agendaStream == null ||
+            _lastQueriedHospitalId != _selectedHospitalId ||
+            _lastQueriedDateString != currentDateString) {
+          _lastQueriedHospitalId = _selectedHospitalId;
+          _lastQueriedDateString = currentDateString;
+          _agendaStream = _firestoreService.getHospitalDailyAgenda(
+            _selectedHospitalId!,
+            currentDateString,
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            title: const Text('Jadwalkan Janji Temu'),
+            backgroundColor: Colors.white,
+            foregroundColor: AppColors.textPrimary,
+            elevation: 0.5,
+          ),
+          body: SafeArea(
+            child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -618,10 +894,7 @@ class _FamilyHospitalSchedulerScreenState
 
                         // Render live streams from Firestore for selected hospital & date
                         StreamBuilder<List<AppointmentModel>>(
-                          stream: _firestoreService.getHospitalDailyAgenda(
-                            _selectedHospitalId!,
-                            _formatDateString(_selectedDate),
-                          ),
+                          stream: _agendaStream,
                           builder: (context, agendaSnapshot) {
                             if (agendaSnapshot.connectionState ==
                                 ConnectionState.waiting) {
@@ -667,57 +940,57 @@ class _FamilyHospitalSchedulerScreenState
                   const SizedBox(height: 40),
                 ],
               ),
-            );
-          },
-        ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -4),
             ),
-          ],
-        ),
-        child: SizedBox(
-          width: double.infinity,
-          height: 50,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _selectedSlot == null || _selectedHospitalId == null
-                  ? AppColors.border
-                  : HospitalColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
-            ),
-            onPressed: _selectedSlot == null || _selectedHospitalId == null || _isBooking
-                ? null
-                : () => _handleBookAppointment(familyId),
-            child: _isBooking
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                  )
-                : Text(
-                    _selectedSlot == null
-                        ? 'Pilih Waktu Dahulu'
-                        : 'Jadwalkan Kunjungan ($_selectedSlot)',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: _selectedSlot == null || _selectedHospitalId == null
-                          ? AppColors.textSecondary
-                          : Colors.white,
-                    ),
-                  ),
           ),
-        ),
-      ),
+          bottomNavigationBar: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _selectedSlot == null || _selectedHospitalId == null
+                      ? AppColors.border
+                      : HospitalColors.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                onPressed: _selectedSlot == null || _selectedHospitalId == null || _isBooking
+                    ? null
+                    : () => _showBookingConfirmationModal(context, familyId, selectedHospitalName),
+                child: _isBooking
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                      )
+                    : Text(
+                        _selectedSlot == null
+                            ? 'Pilih Waktu Dahulu'
+                            : 'Jadwalkan Kunjungan ($_selectedSlot)',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: _selectedSlot == null || _selectedHospitalId == null
+                              ? AppColors.textSecondary
+                              : Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

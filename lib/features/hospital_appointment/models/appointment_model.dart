@@ -7,6 +7,8 @@ class AppointmentModel {
   final String dateString; // Format: YYYY-MM-DD
   final String timeSlot; // Format: HH:MM
   final String status;
+  final String patientName;
+  final String symptoms;
 
   AppointmentModel({
     required this.appointmentId,
@@ -15,6 +17,8 @@ class AppointmentModel {
     required this.dateString,
     required this.timeSlot,
     required this.status,
+    this.patientName = '',
+    this.symptoms = '',
   });
 
   factory AppointmentModel.fromMap(
@@ -28,6 +32,8 @@ class AppointmentModel {
       dateString: data['dateString'] ?? '',
       timeSlot: data['timeSlot'] ?? '',
       status: data['status'] ?? 'pending',
+      patientName: data['patientName'] ?? '',
+      symptoms: data['symptoms'] ?? '',
     );
   }
 
@@ -40,6 +46,8 @@ class AppointmentModel {
       dateString: data['dateString'] ?? '',
       timeSlot: data['timeSlot'] ?? '',
       status: data['status'] ?? 'pending',
+      patientName: data['patientName'] ?? '',
+      symptoms: data['symptoms'] ?? '',
     );
   }
 
@@ -50,6 +58,8 @@ class AppointmentModel {
       'dateString': dateString,
       'timeSlot': timeSlot,
       'status': status,
+      'patientName': patientName,
+      'symptoms': symptoms,
     };
   }
 
@@ -60,6 +70,8 @@ class AppointmentModel {
     String? dateString,
     String? timeSlot,
     String? status,
+    String? patientName,
+    String? symptoms,
   }) {
     return AppointmentModel(
       appointmentId: appointmentId ?? this.appointmentId,
@@ -68,6 +80,8 @@ class AppointmentModel {
       dateString: dateString ?? this.dateString,
       timeSlot: timeSlot ?? this.timeSlot,
       status: status ?? this.status,
+      patientName: patientName ?? this.patientName,
+      symptoms: symptoms ?? this.symptoms,
     );
   }
 }
