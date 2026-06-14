@@ -261,7 +261,7 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final uid = auth.currentUser?.id ?? '';
+    final uid = auth.currentUser?.uid ?? '';
 
     return Scaffold(
       backgroundColor: AppColors.background,

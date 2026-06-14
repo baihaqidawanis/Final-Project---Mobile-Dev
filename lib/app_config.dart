@@ -12,12 +12,15 @@ class AppConfig {
   static const String groqApiKey =
       ''; // TODO: INSERT_YOUR_API_KEY_HERE (Do not commit real keys!)
 
-  // ── Supabase Configuration ───────────────────────────────────────────────
-  static const String supabaseUrl = 'https://dwlavoryaptfwqyisrus.supabase.co';
-  static const String supabaseAnonKey = 'sb_publishable_kA4t8ThCLZgwJWF8ps7PTw_SwFiI_ay';
-
   // Getter to retrieve the appropriate WeatherRepository
   static WeatherRepository get weatherRepository {
     return LiveWeatherRepository();
   }
+
+  // ── Supabase Credentials (Storage Only) ────────────────────────────────────
+  static const String supabaseUrl =
+      'https://dwlavoryaptfwqyisrus.supabase.co/'; // Replace with real project URL
+  static const String supabaseAnonKey =
+      'sb_publishable_kA4t8ThCLZgwJWF8ps7PTw_SwFiI_ay'; // Replace with real anon key
+  static const String supabaseBucket = 'healink-storage';
 }

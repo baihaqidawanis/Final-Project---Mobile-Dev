@@ -1,210 +1,182 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/booking_model.dart';
 import '../models/caregiver_profile_model.dart';
 
 class CaregiverFirestoreService {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // ── Create — Family submits a new booking
+  // Public getter for direct Firestore access
+  FirebaseFirestore get db => _db;
+
+  // ── Collections ──────────────────────────────────────────────────────────
+  CollectionReference<Map<String, dynamic>> get _bookings =>
+      _db.collection('bookings');
+  CollectionReference<Map<String, dynamic>> get _caregivers =>
+      _db.collection('caregivers');
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  CREATE — Family submits a new booking
+  // ════════════════════════════════════════════════════════════════════════
   Future<void> createBooking(BookingModel booking) async {
-    try {
-      await _supabase.from('bookings').insert(booking.toMap());
-    } catch (e) {
-      throw Exception('Failed to create booking: $e');
-    }
+    await _bookings.add(booking.toMap());
   }
 
-  Future<bool> hasActiveBooking(String familyId, String caregiverId) async {
-    try {
-      final response = await _supabase
-          .from('bookings')
-          .select()
-          .eq('family_id', familyId)
-          .eq('caregiver_id', caregiverId)
-          .or('status.eq.pending,status.eq.accepted')
-          .limit(1)
-          .maybeSingle();
-      return response != null;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  // ── READ — Get all available caregivers (real-time stream)
+  // ════════════════════════════════════════════════════════════════════════
+  //  READ — Get all available caregivers (real-time stream)
+  // ════════════════════════════════════════════════════════════════════════
   Stream<List<CaregiverProfileModel>> getCaregivers() {
-    return _supabase
-        .from('caregivers')
-        .stream(primaryKey: ['id'])
-        .eq('is_available', true)
-        .map((list) => list.map(CaregiverProfileModel.fromMap).toList());
+    return _caregivers
+        .where('isAvailable', isEqualTo: true)
+        .snapshots()
+        .map(
+          (snap) => snap.docs.map(CaregiverProfileModel.fromFirestore).toList(),
+        );
   }
 
-  // ── READ — Caregiver profile as real-time stream
+  // ════════════════════════════════════════════════════════════════════════
+  //  READ — Caregiver profile as real-time stream (fixes dashboard live-reload)
+  // ════════════════════════════════════════════════════════════════════════
   Stream<Map<String, dynamic>?> getCaregiverProfileStream(String uid) {
     if (uid.isEmpty) return Stream.value(null);
-    return _supabase
-        .from('caregivers')
-        .stream(primaryKey: ['id'])
-        .eq('id', uid)
-        .map((list) => list.isNotEmpty ? list.first : null);
+    return _caregivers
+        .doc(uid)
+        .snapshots()
+        .map((doc) => doc.exists ? doc.data() : null);
   }
 
-  // ── READ — Family: watch all their own bookings
+  // ════════════════════════════════════════════════════════════════════════
+  //  READ — Family: watch all their own bookings (for My Bookings screen)
+  //  NOTE: orderBy removed from server query to avoid composite index
+  //  requirement (familyId + createdAt). Sorted client-side instead.
+  // ════════════════════════════════════════════════════════════════════════
   Stream<List<BookingModel>> getBookingsByFamily(String familyId) {
-    return _supabase
-        .from('bookings')
-        .stream(primaryKey: ['id'])
-        .eq('family_id', familyId)
-        .map((list) {
-          final items = list.map(BookingModel.fromMap).toList();
-          items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          return items;
-        });
+    return _bookings.where('familyId', isEqualTo: familyId).snapshots().map((
+      snap,
+    ) {
+      final list = snap.docs.map(BookingModel.fromFirestore).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
   }
 
-  // ── READ — Caregiver: watch all incoming requests
+  // ════════════════════════════════════════════════════════════════════════
+  //  READ — Caregiver: watch all incoming requests (real-time)
+  //  NOTE: orderBy only on single field — no composite index needed.
+  // ════════════════════════════════════════════════════════════════════════
   Stream<List<BookingModel>> getBookingsByCaregiver(String caregiverId) {
-    return _supabase
-        .from('bookings')
-        .stream(primaryKey: ['id'])
-        .eq('caregiver_id', caregiverId)
-        .map((list) {
-          final items = list.map(BookingModel.fromMap).toList();
-          items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          return items;
+    return _bookings
+        .where('caregiverId', isEqualTo: caregiverId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map(BookingModel.fromFirestore).toList());
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  READ — Caregiver: completed & cancelled bookings (for History screen)
+  //  NOTE: orderBy removed — composite index (caregiverId+status+createdAt)
+  //  not yet created. Sorted client-side instead.
+  // ════════════════════════════════════════════════════════════════════════
+  Stream<List<BookingModel>> getCompletedBookingsByCaregiver(
+    String caregiverId,
+  ) {
+    return _bookings
+        .where('caregiverId', isEqualTo: caregiverId)
+        .where('status', whereIn: ['completed', 'cancelled'])
+        .snapshots()
+        .map((snap) {
+          final list = snap.docs.map(BookingModel.fromFirestore).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
         });
   }
 
-  // ── READ — Caregiver: completed & cancelled bookings
-  Stream<List<BookingModel>> getCompletedBookingsByCaregiver(String caregiverId) {
-    return _supabase
-        .from('bookings')
-        .stream(primaryKey: ['id'])
-        .eq('caregiver_id', caregiverId)
-        .map((list) {
-          final items = list
-              .map(BookingModel.fromMap)
-              .where((b) => b.status == BookingStatus.completed || b.status == BookingStatus.cancelled)
-              .toList();
-          items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          return items;
-        });
-  }
-
-  // ── READ — Caregiver: only pending + accepted (active queue)
+  // ════════════════════════════════════════════════════════════════════════
+  //  READ — Caregiver: only pending + accepted (active queue)
+  //  NOTE: orderBy removed — composite index (caregiverId+status+createdAt)
+  //  not yet created. Sorted client-side instead.
+  // ════════════════════════════════════════════════════════════════════════
   Stream<List<BookingModel>> getActiveBookingsByCaregiver(String caregiverId) {
-    return _supabase
-        .from('bookings')
-        .stream(primaryKey: ['id'])
-        .eq('caregiver_id', caregiverId)
-        .map((list) {
-          final items = list
-              .map(BookingModel.fromMap)
-              .where((b) => b.status == BookingStatus.pending || b.status == BookingStatus.accepted)
-              .toList();
-          items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          return items;
+    return _bookings
+        .where('caregiverId', isEqualTo: caregiverId)
+        .where('status', whereIn: ['pending', 'accepted'])
+        .snapshots()
+        .map((snap) {
+          final list = snap.docs.map(BookingModel.fromFirestore).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
         });
   }
 
-  // ── UPDATE — Caregiver: accept or decline a booking
-  Future<void> updateBookingStatus(String bookingId, BookingStatus status) async {
-    try {
-      await _supabase
-          .from('bookings')
-          .update({'status': BookingModel.statusToString(status)})
-          .eq('id', bookingId);
-    } catch (e) {
-      throw Exception('Failed to update booking status: $e');
-    }
+  // ════════════════════════════════════════════════════════════════════════
+  //  UPDATE — Caregiver: accept or decline a booking
+  // ════════════════════════════════════════════════════════════════════════
+  Future<void> updateBookingStatus(
+    String bookingId,
+    BookingStatus status,
+  ) async {
+    await _bookings.doc(bookingId).update({
+      'status': BookingModel.statusToString(status),
+    });
   }
 
-  // ── UPDATE — Caregiver: mark complete + write clinical log note
-  Future<void> completeBookingWithNote(String bookingId, String clinicalNote) async {
-    try {
-      await _supabase
-          .from('bookings')
-          .update({
-            'status': BookingModel.statusToString(BookingStatus.completed),
-            'clinical_note': clinicalNote.trim(),
-            'completed_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', bookingId);
-    } catch (e) {
-      throw Exception('Failed to complete booking: $e');
-    }
+  // ════════════════════════════════════════════════════════════════════════
+  //  UPDATE — Caregiver: mark complete + write clinical log note (per PRD)
+  // ════════════════════════════════════════════════════════════════════════
+  Future<void> completeBookingWithNote(
+    String bookingId,
+    String clinicalNote,
+  ) async {
+    await _bookings.doc(bookingId).update({
+      'status': BookingModel.statusToString(BookingStatus.completed),
+      'clinicalNote': clinicalNote.trim(),
+      'completedAt': FieldValue.serverTimestamp(),
+    });
   }
 
-  // ── DELETE — Family: cancel a pending booking
+  // ════════════════════════════════════════════════════════════════════════
+  //  DELETE — Family: cancel a pending booking (sets status to cancelled)
+  // ════════════════════════════════════════════════════════════════════════
   Future<void> cancelBooking(String bookingId) async {
-    try {
-      await _supabase
-          .from('bookings')
-          .update({'status': BookingModel.statusToString(BookingStatus.cancelled)})
-          .eq('id', bookingId);
-    } catch (e) {
-      throw Exception('Failed to cancel booking: $e');
-    }
+    await _bookings.doc(bookingId).update({
+      'status': BookingModel.statusToString(BookingStatus.cancelled),
+    });
   }
 
-  // ── DELETE — Family: hard delete a booking from history
+  // ════════════════════════════════════════════════════════════════════════
+  //  DELETE — Family: hard delete a booking from history
+  // ════════════════════════════════════════════════════════════════════════
   Future<void> deleteBookingHistory(String bookingId) async {
-    try {
-      await _supabase
-          .from('bookings')
-          .delete()
-          .eq('id', bookingId);
-    } catch (e) {
-      throw Exception('Failed to delete booking history: $e');
-    }
+    await _bookings.doc(bookingId).delete();
   }
 
-  // ── UPDATE — Caregiver: edit their own public profile
-  Future<void> updateCaregiverProfile(String uid, Map<String, dynamic> updatedFields) async {
-    try {
-      final mappedFields = <String, dynamic>{};
-      updatedFields.forEach((key, value) {
-        if (key == 'pricePerHour') {
-          mappedFields['price_per_hour'] = value;
-        } else if (key == 'photoUrl') {
-          mappedFields['photo_url'] = value;
-        } else if (key == 'isAvailable') {
-          mappedFields['is_available'] = value;
-        } else if (key == 'totalReviews') {
-          mappedFields['total_reviews'] = value;
-        } else {
-          mappedFields[key] = value;
-        }
-      });
-
-      await _supabase
-          .from('caregivers')
-          .update(mappedFields)
-          .eq('id', uid);
-    } catch (e) {
-      throw Exception('Failed to update caregiver profile: $e');
-    }
+  // ════════════════════════════════════════════════════════════════════════
+  //  UPDATE — Caregiver: edit their own public profile
+  // ════════════════════════════════════════════════════════════════════════
+  Future<void> updateCaregiverProfile(
+    String uid,
+    Map<String, dynamic> updatedFields,
+  ) async {
+    await _caregivers.doc(uid).update(updatedFields);
   }
 
-  // ── UPLOAD — Caregiver: upload profile photo via Base64 URI
+  // ════════════════════════════════════════════════════════════════════════
+  //  UPLOAD — Caregiver: upload profile photo
+  //  Saves directly to Firestore as Base64 to bypass Firebase Storage setup.
+  // ════════════════════════════════════════════════════════════════════════
   Future<String> uploadProfilePhoto({
     required String uid,
     required Uint8List bytes,
-    required String contentType,
+    required String contentType, // e.g. 'image/jpeg'
   }) async {
-    try {
-      final base64String = base64Encode(bytes);
-      final dataUri = 'data:$contentType;base64,$base64String';
+    final base64String = base64Encode(bytes);
+    final dataUri = 'data:$contentType;base64,$base64String';
 
-      await _supabase
-          .from('caregivers')
-          .update({'photo_url': dataUri})
-          .eq('id', uid);
-      return dataUri;
-    } catch (e) {
-      throw Exception('Failed to upload profile photo: $e');
-    }
+    // Persist URL to Firestore so it appears in caregiver listing
+    await _caregivers.doc(uid).update({'photoUrl': dataUri});
+    return dataUri;
   }
+
+  // NOTE: No seed data — caregivers appear when they register via MitraRegisterScreen
 }

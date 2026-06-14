@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../auth/services/auth_provider.dart';
 
@@ -10,7 +10,7 @@ class AdminDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final client = Supabase.instance.client;
+    final db = FirebaseFirestore.instance;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -42,12 +42,12 @@ class AdminDashboardScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Stats cards
-            StreamBuilder<List<Map<String, dynamic>>>(
-              stream: client.from('bookings').stream(primaryKey: ['id']),
+            StreamBuilder<QuerySnapshot>(
+              stream: db.collection('bookings').snapshots(),
               builder: (context, snap) {
-                final list = snap.data ?? [];
-                final total = list.length;
-                final pending = list.where((d) => d['status'] == 'pending').length;
+                final total = snap.data?.docs.length ?? 0;
+                final pending = snap.data?.docs
+                    .where((d) => (d.data() as Map)['status'] == 'pending').length ?? 0;
                 return Row(children: [
                   _statCard('Total Booking', total.toString(), Icons.assignment_outlined, AppColors.primary),
                   const SizedBox(width: 12),
@@ -56,17 +56,17 @@ class AdminDashboardScreen extends StatelessWidget {
               },
             ),
             const SizedBox(height: 12),
-            StreamBuilder<List<Map<String, dynamic>>>(
-              stream: client.from('caregivers').stream(primaryKey: ['id']),
+            StreamBuilder<QuerySnapshot>(
+              stream: db.collection('caregivers').snapshots(),
               builder: (context, snap) {
-                final total = snap.data?.length ?? 0;
+                final total = snap.data?.docs.length ?? 0;
                 return Row(children: [
                   _statCard('Caregiver Aktif', total.toString(), Icons.medical_services_outlined, AppColors.accent),
                   const SizedBox(width: 12),
-                  StreamBuilder<List<Map<String, dynamic>>>(
-                    stream: client.from('profiles').stream(primaryKey: ['id']).eq('role', 'user'),
+                  StreamBuilder<QuerySnapshot>(
+                    stream: db.collection('users').where('role', isEqualTo: 'user').snapshots(),
                     builder: (context, snap) {
-                      final total = snap.data?.length ?? 0;
+                      final total = snap.data?.docs.length ?? 0;
                       return _statCard('Total Pengguna', total.toString(), Icons.people_outline, AppColors.completed);
                     },
                   ),
@@ -80,14 +80,17 @@ class AdminDashboardScreen extends StatelessWidget {
               fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const SizedBox(height: 12),
 
-            StreamBuilder<List<Map<String, dynamic>>>(
-              stream: client.from('bookings').stream(primaryKey: ['id']),
+            StreamBuilder<QuerySnapshot>(
+              stream: db.collection('bookings')
+                  .orderBy('createdAt', descending: true)
+                  .limit(10)
+                  .snapshots(),
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final list = snap.data ?? [];
-                if (list.isEmpty) {
+                final docs = snap.data?.docs ?? [];
+                if (docs.isEmpty) {
                   return const Center(
                     child: Padding(
                       padding: EdgeInsets.all(24),
@@ -95,18 +98,9 @@ class AdminDashboardScreen extends StatelessWidget {
                     ),
                   );
                 }
-
-                // Sort by created_at descending and limit to 10
-                final sortedList = List<Map<String, dynamic>>.from(list);
-                sortedList.sort((a, b) {
-                  final aTime = DateTime.parse(a['created_at'] as String);
-                  final bTime = DateTime.parse(b['created_at'] as String);
-                  return bTime.compareTo(aTime);
-                });
-                final recentList = sortedList.take(10).toList();
-
                 return Column(
-                  children: recentList.map((d) {
+                  children: docs.map((doc) {
+                    final d = doc.data() as Map<String, dynamic>;
                     final status = d['status'] ?? 'pending';
                     final statusColor = switch (status) {
                       'accepted' => AppColors.accepted,
@@ -126,9 +120,9 @@ class AdminDashboardScreen extends StatelessWidget {
                         Expanded(child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(d['family_name'] ?? d['familyName'] ?? '-', style: const TextStyle(
+                            Text(d['familyName'] ?? '-', style: const TextStyle(
                               fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.textPrimary)),
-                            Text('→ ${d['caregiver_name'] ?? d['caregiverName'] ?? '-'}',
+                            Text('→ ${d['caregiverName'] ?? '-'}',
                                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                           ],
                         )),
@@ -154,18 +148,18 @@ class AdminDashboardScreen extends StatelessWidget {
               fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const SizedBox(height: 12),
 
-            StreamBuilder<List<Map<String, dynamic>>>(
-              stream: client.from('caregivers').stream(primaryKey: ['id']),
+            StreamBuilder<QuerySnapshot>(
+              stream: db.collection('caregivers').snapshots(),
               builder: (context, snap) {
-                final docs = snap.data ?? [];
+                final docs = snap.data?.docs ?? [];
                 if (docs.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(16),
                     child: Text('Belum ada mitra terdaftar', style: TextStyle(color: AppColors.textSecondary)),
                   );
                 }
-                return Column(children: docs.map((d) {
-                  final price = (d['price_per_hour'] ?? d['pricePerHour'] ?? 0) as num;
+                return Column(children: docs.map((doc) {
+                  final d = doc.data() as Map<String, dynamic>;
                   return Container(
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.all(14),
@@ -191,7 +185,7 @@ class AdminDashboardScreen extends StatelessWidget {
                               style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                         ],
                       )),
-                      Text('Rp ${(price / 1000).toStringAsFixed(0)}k/jam',
+                      Text('Rp ${((d['pricePerHour'] ?? 0) / 1000).toStringAsFixed(0)}k/jam',
                           style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 12)),
                     ]),
                   );
@@ -223,20 +217,12 @@ class AdminDashboardScreen extends StatelessWidget {
             child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(value, style: TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.w800, color: color)),
-                Text(label, style: const TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(value, style: TextStyle(
+              fontSize: 22, fontWeight: FontWeight.w800, color: color)),
+            Text(label, style: const TextStyle(
+              fontSize: 11, color: AppColors.textSecondary)),
+          ]),
         ]),
       ),
     );

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class PharmacyProfileModel {
   final String uid;
   final String name;
@@ -23,31 +25,32 @@ class PharmacyProfileModel {
     required this.isOpen,
   });
 
-  factory PharmacyProfileModel.fromMap(Map<String, dynamic> data) {
+  factory PharmacyProfileModel.fromFirestore(
+      DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data()!;
     return PharmacyProfileModel(
-      uid: data['id'] ?? data['uid'] ?? '',
+      uid: doc.id,
       name: data['name'] ?? '',
       address: data['address'] ?? '',
       area: data['area'] ?? '',
       phone: data['phone'] ?? '',
-      openHours: data['open_hours'] ?? data['openHours'] ?? '08:00 - 21:00',
+      openHours: data['openHours'] ?? '08:00 - 21:00',
       rating: (data['rating'] ?? 0).toDouble(),
-      totalReviews: data['total_reviews'] ?? data['totalReviews'] ?? 0,
-      photoUrl: data['photo_url'] ?? data['photoUrl'] ?? '',
-      isOpen: data['is_open'] ?? data['isOpen'] ?? true,
+      totalReviews: data['totalReviews'] ?? 0,
+      photoUrl: data['photoUrl'] ?? '',
+      isOpen: data['isOpen'] ?? true,
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'id': uid,
         'name': name,
         'address': address,
         'area': area,
         'phone': phone,
-        'open_hours': openHours,
+        'openHours': openHours,
         'rating': rating,
-        'total_reviews': totalReviews,
-        'photo_url': photoUrl,
-        'is_open': isOpen,
+        'totalReviews': totalReviews,
+        'photoUrl': photoUrl,
+        'isOpen': isOpen,
       };
 }

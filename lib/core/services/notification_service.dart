@@ -1,9 +1,9 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Top-level handler for background/terminated FCM messages.
 /// MUST be a top-level function (not a class method).
@@ -50,6 +50,7 @@ BJ9nxxU7WJR1iwG4SDMjMDeVrlBof6ZDSKaRSz3SpCFRq2i6+TkXgvlW44HyyqGf
 gJIrD0p+YEC4ffoZ0rdP6j1zAC+vLWfalq3spmXPEPORZIbFoLdbTM3CYhIIBe+t
 B6ica8BhfRFA2md7foVTz1A=
 -----END PRIVATE KEY-----''';
+// e.g. '-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----\n'
 
 const String _projectId = 'final-project-mobile-dev-1c1c4';
 
@@ -61,7 +62,7 @@ class NotificationService {
   NotificationService._internal();
 
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   String? _cachedAccessToken;
   DateTime? _tokenExpiry;
@@ -108,18 +109,17 @@ class NotificationService {
 
   // ── Token Management ──────────────────────────────────────────────────────
 
-  /// Save FCM token to Supabase so others can send notifications to this user.
+  /// Save FCM token to Firestore so others can send notifications to this user.
   Future<void> saveTokenToFirestore(String uid) async {
     if (uid.isEmpty) return;
     try {
       final token = await _fcm.getToken();
       if (token == null) return;
-      await _supabase.from('fcm_tokens').upsert({
-        'user_id': uid,
-        'token': token,
-        'updated_at': DateTime.now().toIso8601String(),
+      await _db.collection('users').doc(uid).update({
+        'fcmToken': token,
+        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
       });
-      debugPrint('[FCM] Token saved to Supabase for uid: $uid');
+      debugPrint('[FCM] Token saved to Firestore for uid: $uid');
     } catch (e) {
       debugPrint('[FCM] Failed to save token: $e');
     }
@@ -130,7 +130,9 @@ class NotificationService {
     try {
       await _fcm.deleteToken();
       if (uid.isNotEmpty) {
-        await _supabase.from('fcm_tokens').delete().eq('user_id', uid);
+        await _db.collection('users').doc(uid).update({
+          'fcmToken': FieldValue.delete(),
+        });
       }
     } catch (e) {
       debugPrint('[FCM] Failed to delete token: $e');
@@ -149,17 +151,15 @@ class NotificationService {
   }) async {
     if (_serviceAccountEmail == 'YOUR_SERVICE_ACCOUNT_EMAIL_HERE') {
       debugPrint('[FCM] ⚠️ Service account not configured — notification skipped.');
+      debugPrint('[FCM]     To demo notifications, send from Firebase Console:');
+      debugPrint('[FCM]     Messaging → New Campaign → Test on device');
       return;
     }
 
     try {
-      // 1. Get target FCM token from Supabase
-      final fcmTokenDoc = await _supabase
-          .from('fcm_tokens')
-          .select('token')
-          .eq('user_id', targetUid)
-          .maybeSingle();
-      final fcmToken = fcmTokenDoc?['token'] as String?;
+      // 1. Get target FCM token from Firestore
+      final doc = await _db.collection('users').doc(targetUid).get();
+      final fcmToken = doc.data()?['fcmToken'] as String?;
 
       if (fcmToken == null || fcmToken.isEmpty) {
         debugPrint('[FCM] Target user $targetUid has no FCM token');
@@ -274,9 +274,12 @@ class NotificationService {
 
   void _handleForegroundMessage(RemoteMessage message) {
     debugPrint('[FCM] Foreground: ${message.notification?.title}');
+    // Firestore real-time streams automatically update the UI when a booking
+    // changes status, so no additional action needed for foreground messages.
   }
 
   void _handleMessageOpenedApp(RemoteMessage message) {
     debugPrint('[FCM] Opened from notification: ${message.data}');
+    // Could navigate to dashboard based on message.data['type']
   }
 }

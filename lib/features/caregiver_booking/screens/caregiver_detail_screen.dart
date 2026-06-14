@@ -85,9 +85,15 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
 
     // ── Double-booking guard ──────────────────────────────────────────────
     try {
-      final hasActive = await _service.hasActiveBooking(widget.familyId, widget.caregiver.uid);
+      final existing = await _service.db
+          .collection('bookings')
+          .where('familyId', isEqualTo: widget.familyId)
+          .where('caregiverId', isEqualTo: widget.caregiver.uid)
+          .where('status', whereIn: ['pending', 'accepted'])
+          .limit(1)
+          .get();
 
-      if (hasActive && mounted) {
+      if (existing.docs.isNotEmpty && mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

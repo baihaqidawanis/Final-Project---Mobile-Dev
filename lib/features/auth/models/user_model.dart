@@ -1,8 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class UserModel {
   final String uid;
   final String name;
   final String email;
-  final String role; // "admin" | "user" | "caregiver" | "hospital" | "pharmacy"
+  final String role; // "family" | "caregiver" | "hospital" | "pharmacy"
   final DateTime createdAt;
 
   const UserModel({
@@ -15,23 +17,21 @@ class UserModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'id': uid,
+      'uid': uid,
       'name': name,
       'email': email,
       'role': role,
-      'created_at': createdAt.toIso8601String(),
+      'createdAt': Timestamp.fromDate(createdAt),
     };
   }
 
-  factory UserModel.fromMap(Map<String, dynamic> data) {
+  factory UserModel.fromFirestore(Map<String, dynamic> data) {
     return UserModel(
-      uid: data['id'] ?? '',
+      uid: data['uid'] ?? '',
       name: data['name'] ?? '',
       email: data['email'] ?? '',
-      role: data['role'] ?? 'user',
-      createdAt: data['created_at'] != null
-          ? DateTime.parse(data['created_at'] as String)
-          : DateTime.now(),
+      role: data['role'] ?? 'family',
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 enum BookingStatus { pending, accepted, completed, cancelled }
 
 class BookingModel {
@@ -55,44 +57,39 @@ class BookingModel {
     }
   }
 
-  factory BookingModel.fromMap(Map<String, dynamic> data) {
+  factory BookingModel.fromFirestore(
+      DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data()!;
     return BookingModel(
-      bookingId: data['id'] ?? '',
-      familyId: data['family_id'] ?? '',
-      caregiverId: data['caregiver_id'] ?? '',
-      caregiverName: data['caregiver_name'] ?? '',
-      familyName: data['family_name'] ?? '',
-      dateTime: data['date_time'] != null
-          ? DateTime.parse(data['date_time'] as String)
-          : DateTime.now(),
+      bookingId: doc.id,
+      familyId: data['familyId'] ?? '',
+      caregiverId: data['caregiverId'] ?? '',
+      caregiverName: data['caregiverName'] ?? '',
+      familyName: data['familyName'] ?? '',
+      dateTime:
+          (data['dateTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
       specialization: data['specialization'] ?? '',
-      pricePerHour: (data['price_per_hour'] ?? 0).toDouble(),
+      pricePerHour: (data['pricePerHour'] ?? 0).toDouble(),
       notes: data['notes'] ?? '',
-      clinicalNote: data['clinical_note'] ?? '',
+      clinicalNote: data['clinicalNote'] ?? '',
       status: _parseStatus(data['status']),
-      createdAt: data['created_at'] != null
-          ? DateTime.parse(data['created_at'] as String)
-          : DateTime.now(),
+      createdAt:
+          (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
   Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{
-      'family_id': familyId,
-      'caregiver_id': caregiverId,
-      'caregiver_name': caregiverName,
-      'family_name': familyName,
-      'date_time': dateTime.toIso8601String(),
+    return {
+      'familyId': familyId,
+      'caregiverId': caregiverId,
+      'caregiverName': caregiverName,
+      'familyName': familyName,
+      'dateTime': Timestamp.fromDate(dateTime),
       'specialization': specialization,
-      'price_per_hour': pricePerHour,
+      'pricePerHour': pricePerHour,
       'notes': notes,
       'status': statusToString(status),
-      'created_at': createdAt.toIso8601String(),
-      'clinical_note': clinicalNote,
+      'createdAt': Timestamp.fromDate(createdAt),
     };
-    if (bookingId.isNotEmpty) {
-      map['id'] = bookingId;
-    }
-    return map;
   }
 }
