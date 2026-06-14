@@ -71,7 +71,7 @@ class CinemaSeatGrid extends StatelessWidget {
 
         return GestureDetector(
           onTap: () {
-            if (!isBooked && !isSelected) {
+            if (!isBooked) {
               onSlotSelected(slot);
             }
           },

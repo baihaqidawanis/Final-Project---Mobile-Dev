@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
+import '../theme/hospital_colors.dart';
 
 class CalendarPicker extends StatelessWidget {
   final DateTime selectedDate;
@@ -15,10 +16,22 @@ class CalendarPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
-    
-    // Generate next 14 days (including today)
+    final todayStart = DateTime(today.year, today.month, today.day);
+    final selectedStart = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+
+    final difference = selectedStart.difference(todayStart).inDays;
+    final DateTime startBase;
+    if (difference < 0) {
+      startBase = selectedStart;
+    } else if (difference > 10) {
+      // Shift base so selectedDate is positioned around the 4th item in the row for context
+      startBase = selectedStart.subtract(const Duration(days: 3));
+    } else {
+      startBase = todayStart;
+    }
+
     final List<DateTime> dates = List.generate(14, (index) {
-      return DateTime(today.year, today.month, today.day + index);
+      return DateTime(startBase.year, startBase.month, startBase.day + index);
     });
 
     return SizedBox(
@@ -42,16 +55,16 @@ class CalendarPicker extends StatelessWidget {
               margin: const EdgeInsets.only(right: 12, top: 4, bottom: 4),
               width: 70,
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.surface,
+                color: isSelected ? HospitalColors.primary : AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.border,
+                  color: isSelected ? HospitalColors.primary : AppColors.border,
                   width: 1.5,
                 ),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.3),
+                          color: HospitalColors.primary.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
