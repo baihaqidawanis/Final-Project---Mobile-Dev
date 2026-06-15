@@ -6,12 +6,14 @@ class CinemaSeatGrid extends StatelessWidget {
   final List<AppointmentModel> appointments;
   final String? selectedSlot;
   final ValueChanged<String> onSlotSelected;
+  final DateTime selectedDate;
 
   const CinemaSeatGrid({
     super.key,
     required this.appointments,
     required this.selectedSlot,
     required this.onSlotSelected,
+    required this.selectedDate,
   });
 
   @override
@@ -51,16 +53,34 @@ class CinemaSeatGrid extends StatelessWidget {
         final isSelected = slot == selectedSlot;
         final isBooked = bookedSlots.contains(slot);
 
+        // Determine if slot has already passed
+        final now = DateTime.now();
+        final parts = slot.split(':');
+        final hour = int.parse(parts[0]);
+        final minute = int.parse(parts[1]);
+        final slotDateTime = DateTime(
+          selectedDate.year,
+          selectedDate.month,
+          selectedDate.day,
+          hour,
+          minute,
+        );
+        final isPassed = slotDateTime.isBefore(now);
+
         Color backgroundColor;
         Color textColor;
         Color borderColor;
 
-        if (isSelected) {
+        if (isPassed) {
+          backgroundColor = AppColors.border.withValues(alpha: 0.4); // Muted/greyed out
+          textColor = AppColors.textSecondary.withValues(alpha: 0.5);
+          borderColor = AppColors.border.withValues(alpha: 0.4);
+        } else if (isSelected) {
           backgroundColor = AppColors.cancelled; // Red (Indicator)
           textColor = Colors.white;
           borderColor = AppColors.cancelled;
         } else if (isBooked) {
-          backgroundColor = AppColors.border; // Grey (Disabled)
+          backgroundColor = AppColors.border; // Grey (Disabled/Booked)
           textColor = AppColors.textSecondary;
           borderColor = AppColors.border;
         } else {
@@ -71,7 +91,7 @@ class CinemaSeatGrid extends StatelessWidget {
 
         return GestureDetector(
           onTap: () {
-            if (!isBooked) {
+            if (!isBooked && !isPassed) {
               onSlotSelected(slot);
             }
           },

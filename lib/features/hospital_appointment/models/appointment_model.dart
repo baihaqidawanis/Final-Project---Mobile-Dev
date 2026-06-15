@@ -9,6 +9,7 @@ class AppointmentModel {
   final String status;
   final String patientName;
   final String symptoms;
+  final String statusReason;
 
   AppointmentModel({
     required this.appointmentId,
@@ -19,6 +20,7 @@ class AppointmentModel {
     required this.status,
     this.patientName = '',
     this.symptoms = '',
+    this.statusReason = '',
   });
 
   factory AppointmentModel.fromMap(
@@ -34,6 +36,7 @@ class AppointmentModel {
       status: data['status'] ?? 'pending',
       patientName: data['patientName'] ?? '',
       symptoms: data['symptoms'] ?? '',
+      statusReason: data['statusReason'] ?? '',
     );
   }
 
@@ -48,6 +51,7 @@ class AppointmentModel {
       status: data['status'] ?? 'pending',
       patientName: data['patientName'] ?? '',
       symptoms: data['symptoms'] ?? '',
+      statusReason: data['statusReason'] ?? '',
     );
   }
 
@@ -60,6 +64,7 @@ class AppointmentModel {
       'status': status,
       'patientName': patientName,
       'symptoms': symptoms,
+      'statusReason': statusReason,
     };
   }
 
@@ -72,6 +77,7 @@ class AppointmentModel {
     String? status,
     String? patientName,
     String? symptoms,
+    String? statusReason,
   }) {
     return AppointmentModel(
       appointmentId: appointmentId ?? this.appointmentId,
@@ -82,6 +88,7 @@ class AppointmentModel {
       status: status ?? this.status,
       patientName: patientName ?? this.patientName,
       symptoms: symptoms ?? this.symptoms,
+      statusReason: statusReason ?? this.statusReason,
     );
   }
 }

@@ -16,4 +16,8 @@ class AppConfig {
   static WeatherRepository get weatherRepository {
     return LiveWeatherRepository();
   }
+
+  // ── Supabase ──────────────────────────────────────────────────────────────
+  static const String supabaseUrl = ''; // TODO: INSERT_YOUR_SUPABASE_URL_HERE
+  static const String supabaseAnonKey = ''; // TODO: INSERT_YOUR_SUPABASE_ANON_KEY_HERE
 }
