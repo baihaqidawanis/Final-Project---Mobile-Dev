@@ -18,6 +18,8 @@ class AppConfig {
   }
 
   // ── Supabase ──────────────────────────────────────────────────────────────
-  static const String supabaseUrl = ''; // TODO: INSERT_YOUR_SUPABASE_URL_HERE
-  static const String supabaseAnonKey = ''; // TODO: INSERT_YOUR_SUPABASE_ANON_KEY_HERE
+  static const String supabaseUrl =
+      'https://dwlavoryaptfwqyisrus.supabase.co/'; // TODO: INSERT_YOUR_SUPABASE_URL_HERE
+  static const String supabaseAnonKey =
+      'sb_publishable_kA4t8ThCLZgwJWF8ps7PTw_SwFiI_ay'; // TODO: INSERT_YOUR_SUPABASE_ANON_KEY_HERE
 }

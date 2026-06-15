@@ -1,6 +1,6 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/services/supabase_storage_service.dart';
 import '../models/booking_model.dart';
 import '../models/caregiver_profile_model.dart';
 
@@ -163,19 +163,22 @@ class CaregiverFirestoreService {
 
   // ════════════════════════════════════════════════════════════════════════
   //  UPLOAD — Caregiver: upload profile photo
-  //  Saves directly to Firestore as Base64 to bypass Firebase Storage setup.
+  //  Saves to Supabase Storage and updates Firestore photoUrl.
   // ════════════════════════════════════════════════════════════════════════
   Future<String> uploadProfilePhoto({
     required String uid,
     required Uint8List bytes,
     required String contentType, // e.g. 'image/jpeg'
   }) async {
-    final base64String = base64Encode(bytes);
-    final dataUri = 'data:$contentType;base64,$base64String';
+    final String publicUrl = await SupabaseStorageService().uploadBytes(
+      bytes: bytes,
+      filePath: 'caregivers/profile_$uid.jpg',
+      contentType: contentType,
+    );
 
     // Persist URL to Firestore so it appears in caregiver listing
-    await _caregivers.doc(uid).update({'photoUrl': dataUri});
-    return dataUri;
+    await _caregivers.doc(uid).update({'photoUrl': publicUrl});
+    return publicUrl;
   }
 
   // NOTE: No seed data — caregivers appear when they register via MitraRegisterScreen

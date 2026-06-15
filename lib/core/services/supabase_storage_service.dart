@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseStorageService {
@@ -28,6 +29,35 @@ class SupabaseStorageService {
       return publicUrl;
     } catch (e) {
       throw Exception('Failed to upload file to Supabase: $e');
+    }
+  }
+
+  /// Uploads raw bytes to the specified path inside the `healink-storage` bucket
+  /// and returns the public URL.
+  Future<String> uploadBytes({
+    required Uint8List bytes,
+    required String filePath,
+    String? contentType,
+  }) async {
+    try {
+      // 1. Upload bytes using uploadBinary
+      await _supabase.storage.from('healink-storage').uploadBinary(
+            filePath,
+            bytes,
+            fileOptions: FileOptions(
+              cacheControl: '3600',
+              upsert: true,
+              contentType: contentType,
+            ),
+          );
+
+      // 2. Get the public URL
+      final String publicUrl =
+          _supabase.storage.from('healink-storage').getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (e) {
+      throw Exception('Failed to upload bytes to Supabase: $e');
     }
   }
 }

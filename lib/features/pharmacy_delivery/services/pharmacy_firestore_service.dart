@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import '../../../core/services/supabase_storage_service.dart';
 import '../models/pharmacy_profile_model.dart';
 import '../models/medicine_model.dart';
 import '../models/pharmacy_order_model.dart';
@@ -15,7 +15,6 @@ class PrescriptionUploadResult {
 
 class PharmacyFirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   CollectionReference<Map<String, dynamic>> get _pharmacies =>
       _db.collection('pharmacies');
@@ -92,9 +91,13 @@ class PharmacyFirestoreService {
     final safeFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
     final path =
         'pharmacy_prescriptions/$pharmacyId/$userId/${DateTime.now().millisecondsSinceEpoch}_$safeFileName';
-    final ref = _storage.ref(path);
-    await ref.putData(bytes, SettableMetadata(contentType: contentType));
-    final url = await ref.getDownloadURL();
+    
+    final String url = await SupabaseStorageService().uploadBytes(
+      bytes: bytes,
+      filePath: path,
+      contentType: contentType,
+    );
+    
     return PrescriptionUploadResult(url: url, path: path);
   }
 
