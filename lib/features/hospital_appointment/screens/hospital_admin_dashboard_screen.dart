@@ -1,8 +1,12 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/supabase_storage_service.dart';
 import '../../auth/services/auth_provider.dart';
 import '../models/appointment_model.dart';
 import '../services/hospital_firestore_service.dart';
@@ -35,13 +39,35 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
     '17:00',
   ];
 
+  // Profile editing fields
+  final _profileFormKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _descController = TextEditingController();
+  String _profilePhotoUrl = '';
+  bool _profileInitialized = false;
+  bool _isUploadingPhoto = false;
+  bool _isSavingProfile = false;
+
   @override
   void initState() {
     super.initState();
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _addressController.dispose();
+    _phoneController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
+
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
+      case 'approved':
+        return AppColors.primary; // Teal
       case 'completed':
         return AppColors.completed; // Blue
       case 'delayed':
@@ -51,6 +77,109 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
       case 'booked':
       default:
         return AppColors.accent; // Green
+    }
+  }
+
+  Future<void> _updateStatusWithReasonDialog(AppointmentModel appointment, String newStatus) async {
+    if (newStatus == 'delayed' || newStatus == 'cancelled') {
+      final controller = TextEditingController();
+      final formKey = GlobalKey<FormState>();
+      final isDelayed = newStatus == 'delayed';
+      
+      final bool? confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text(isDelayed ? 'Alasan Penundaan' : 'Alasan Pembatalan'),
+            content: Form(
+              key: formKey,
+              child: TextFormField(
+                controller: controller,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: isDelayed 
+                      ? 'Masukkan alasan penundaan...' 
+                      : 'Masukkan alasan pembatalan...',
+                  border: const OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Alasan harus diisi';
+                  }
+                  return null;
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal'),
+              ),
+              TextButton(
+                onPressed: () {
+                  if (formKey.currentState?.validate() ?? false) {
+                    Navigator.pop(context, true);
+                  }
+                },
+                child: const Text('Simpan'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirmed != true) return;
+
+      final reason = controller.text.trim();
+      try {
+        await _firestoreService.updateAppointmentStatus(
+          appointment.appointmentId,
+          newStatus,
+          statusReason: reason,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Status diperbarui ke $newStatus'),
+              backgroundColor: AppColors.accent,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal memperbarui: $e'),
+              backgroundColor: AppColors.cancelled,
+            ),
+          );
+        }
+      }
+    } else {
+      try {
+        await _firestoreService.updateAppointmentStatus(
+          appointment.appointmentId,
+          newStatus,
+          statusReason: '',
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Status diperbarui ke $newStatus'),
+              backgroundColor: AppColors.accent,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal memperbarui: $e'),
+              backgroundColor: AppColors.cancelled,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -568,6 +697,18 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                                             ),
                                           ),
                                         ],
+                                        if (appointment.statusReason.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Alasan: ${appointment.statusReason}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: statusColor,
+                                              fontWeight: FontWeight.w500,
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
+                                        ],
                                         const SizedBox(height: 6),
                                         Row(
                                           children: [
@@ -593,79 +734,94 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                                     ),
                                   ),
 
-                                  // Right: Action Dropdown popup button
-                                  PopupMenuButton<String>(
-                                    icon: const Icon(
-                                      Icons.more_vert,
-                                      color: AppColors.textSecondary,
+                                  // Right: Action Dropdown selection
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.background,
+                                      borderRadius: BorderRadius.circular(24), // Smoother rounded/oval shape
+                                      border: Border.all(color: AppColors.border, width: 1.2),
                                     ),
-                                    onSelected: (newStatus) async {
-                                      try {
-                                        await _firestoreService.updateAppointmentStatus(
-                                          appointment.appointmentId,
-                                          newStatus,
-                                        );
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text('Status updated to $newStatus'),
-                                              backgroundColor: AppColors.accent,
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: appointment.status.toLowerCase(),
+                                        icon: const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary, size: 20),
+                                        borderRadius: BorderRadius.circular(16), // Rounded popup menu
+                                        elevation: 16,
+                                        style: const TextStyle(
+                                          color: AppColors.textPrimary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        onChanged: (String? newStatus) {
+                                          if (newStatus != null && newStatus != appointment.status.toLowerCase()) {
+                                            _updateStatusWithReasonDialog(appointment, newStatus);
+                                          }
+                                        },
+                                        items: [
+                                          if (appointment.status.toLowerCase() == 'booked' || appointment.status.toLowerCase() == 'pending')
+                                            DropdownMenuItem<String>(
+                                              value: appointment.status.toLowerCase(),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    appointment.status.toLowerCase() == 'booked' ? Icons.bookmark : Icons.hourglass_empty,
+                                                    color: appointment.status.toLowerCase() == 'booked' ? AppColors.accent : AppColors.pending,
+                                                    size: 16,
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Text(appointment.status.toLowerCase() == 'booked' ? 'Booked' : 'Pending'),
+                                                ],
+                                              ),
                                             ),
-                                          );
-                                        }
-                                      } catch (e) {
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text('Error: $e'),
-                                              backgroundColor: AppColors.cancelled,
+                                          const DropdownMenuItem<String>(
+                                            value: 'approved',
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.verified, color: AppColors.primary, size: 16),
+                                                SizedBox(width: 6),
+                                                Text('Approved'),
+                                              ],
                                             ),
-                                          );
-                                        }
-                                      }
-                                    },
-                                    itemBuilder: (context) => [
-                                      const PopupMenuItem(
-                                        value: 'booked',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.bookmark, color: AppColors.accent, size: 18),
-                                            SizedBox(width: 8),
-                                            Text('Booked'),
-                                          ],
-                                        ),
+                                          ),
+                                          const DropdownMenuItem<String>(
+                                            value: 'completed',
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.check_circle, color: AppColors.completed, size: 16),
+                                                SizedBox(width: 6),
+                                                Text('Completed'),
+                                              ],
+                                            ),
+                                          ),
+                                          const DropdownMenuItem<String>(
+                                            value: 'delayed',
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.watch_later, color: AppColors.pending, size: 16),
+                                                SizedBox(width: 6),
+                                                Text('Delayed'),
+                                              ],
+                                            ),
+                                          ),
+                                          const DropdownMenuItem<String>(
+                                            value: 'cancelled',
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.cancel, color: AppColors.cancelled, size: 16),
+                                                SizedBox(width: 6),
+                                                Text('Cancelled'),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const PopupMenuItem(
-                                        value: 'completed',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.check_circle, color: AppColors.completed, size: 18),
-                                            SizedBox(width: 8),
-                                            Text('Completed'),
-                                          ],
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'delayed',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.watch_later, color: AppColors.pending, size: 18),
-                                            SizedBox(width: 8),
-                                            Text('Delayed'),
-                                          ],
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'cancelled',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.cancel, color: AppColors.cancelled, size: 18),
-                                            SizedBox(width: 8),
-                                            Text('Cancelled'),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ],
                               ),
@@ -834,6 +990,7 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                       );
                     },
                   ),
+                  _buildProfileTab(hospitalId),
                 ],
               ),
             ),
@@ -858,8 +1015,271 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
             icon: Icon(Icons.grid_view_rounded),
             label: 'Kelola Slot',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline_rounded),
+            activeIcon: Icon(Icons.person_rounded),
+            label: 'Profil',
+          ),
         ],
       ),
     );
+  }
+
+  Widget _buildProfileTab(String hospitalId) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('users').doc(hospitalId).snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting && !_profileInitialized) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+          if (!_profileInitialized) {
+            _nameController.text = data['name'] ?? '';
+            _addressController.text = data['address'] ?? '';
+            _phoneController.text = data['phone'] ?? '';
+            _descController.text = data['description'] ?? '';
+            _profilePhotoUrl = data['photoUrl'] ?? '';
+            _profileInitialized = true;
+          }
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _profileFormKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Profile Photo
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 64,
+                      backgroundColor: AppColors.border,
+                      backgroundImage: _profilePhotoUrl.isNotEmpty
+                          ? CachedNetworkImageProvider(_profilePhotoUrl)
+                          : null,
+                      child: _profilePhotoUrl.isEmpty
+                          ? const Icon(
+                              Icons.local_hospital_rounded,
+                              size: 64,
+                              color: HospitalColors.primary,
+                            )
+                          : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: CircleAvatar(
+                        radius: 20,
+                        backgroundColor: HospitalColors.primary,
+                        child: _isUploadingPhoto
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : IconButton(
+                                icon: const Icon(
+                                  Icons.camera_alt_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                onPressed: () => _pickAndUploadPhoto(hospitalId),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+
+                // Name
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nama Klinik / Rumah Sakit',
+                    prefixIcon: Icon(Icons.local_hospital_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Nama tidak boleh kosong';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Phone
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Nomor Telepon',
+                    prefixIcon: Icon(Icons.phone_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Address
+                TextFormField(
+                  controller: _addressController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Alamat',
+                    prefixIcon: Icon(Icons.location_on_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Description
+                TextFormField(
+                  controller: _descController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Deskripsi / Profil Klinik',
+                    prefixIcon: Icon(Icons.info_rounded),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Save button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: HospitalColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: _isSavingProfile ? null : () => _saveProfileData(hospitalId),
+                    child: _isSavingProfile
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'Simpan Profil',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickAndUploadPhoto(String hospitalId) async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (image == null) return;
+
+    setState(() {
+      _isUploadingPhoto = true;
+    });
+
+    try {
+      final String publicUrl = await SupabaseStorageService().uploadFile(
+        file: File(image.path),
+        filePath: 'hospitals/profile_$hospitalId.jpg',
+      );
+
+      setState(() {
+        _profilePhotoUrl = publicUrl;
+        _isUploadingPhoto = false;
+      });
+
+      // Update in Firestore immediately
+      await FirebaseFirestore.instance.collection('users').doc(hospitalId).update({
+        'photoUrl': publicUrl,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Foto profil berhasil diunggah'),
+            backgroundColor: AppColors.accent,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isUploadingPhoto = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengunggah foto: $e'),
+            backgroundColor: AppColors.cancelled,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveProfileData(String hospitalId) async {
+    if (!_profileFormKey.currentState!.validate()) return;
+
+    setState(() {
+      _isSavingProfile = true;
+    });
+
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(hospitalId).update({
+        'name': _nameController.text.trim(),
+        'address': _addressController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'description': _descController.text.trim(),
+        'photoUrl': _profilePhotoUrl,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profil berhasil disimpan'),
+            backgroundColor: AppColors.accent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan profil: $e'),
+            backgroundColor: AppColors.cancelled,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isSavingProfile = false;
+      });
+    }
   }
 }
