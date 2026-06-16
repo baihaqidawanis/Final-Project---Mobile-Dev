@@ -31,11 +31,78 @@ class _PharmacyOrderIntakeScreenState extends State<PharmacyOrderIntakeScreen>
   bool _isOpen = true;
   bool _savingProfile = false;
   bool _profileLoaded = false;
+  String? _lastCheckedUid;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final uid = context.read<AuthProvider>().currentUser?.uid;
+    if (uid != null && uid != _lastCheckedUid) {
+      _lastCheckedUid = uid;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _checkPendingOrdersOnLogin(uid),
+      );
+    }
+  }
+
+  Future<void> _checkPendingOrdersOnLogin(String uid) async {
+    if (!mounted) return;
+    final count = await _service.getPendingOrderCount(uid);
+    if (!mounted || count == 0) return;
+
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _kPurple.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.notifications_active, color: _kPurple, size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Pesanan Menunggu',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Ada $count pesanan baru yang menunggu konfirmasimu. Segera proses agar pelanggan tidak menunggu lama!',
+          style: const TextStyle(fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Nanti'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _kPurple,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              _tabController.animateTo(0);
+            },
+            child: const Text('Lihat Pesanan'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -435,6 +502,7 @@ class _PharmacyOrderIntakeScreenState extends State<PharmacyOrderIntakeScreen>
                     onPressed: () => _service.updateOrderStatus(
                       o.orderId,
                       PharmacyOrderStatus.cancelled,
+                      order: o,
                     ),
                     child: const Text('Tolak'),
                   ),
@@ -452,6 +520,7 @@ class _PharmacyOrderIntakeScreenState extends State<PharmacyOrderIntakeScreen>
                     onPressed: () => _service.updateOrderStatus(
                       o.orderId,
                       PharmacyOrderStatus.accepted,
+                      order: o,
                     ),
                     child: const Text('Terima & Kemas'),
                   ),
@@ -475,6 +544,7 @@ class _PharmacyOrderIntakeScreenState extends State<PharmacyOrderIntakeScreen>
                 onPressed: () => _service.updateOrderStatus(
                   o.orderId,
                   PharmacyOrderStatus.shipped,
+                  order: o,
                 ),
                 icon: const Icon(Icons.local_shipping_outlined),
                 label: const Text('Kirim Pesanan'),

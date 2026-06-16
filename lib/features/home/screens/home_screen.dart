@@ -5,9 +5,12 @@ import '../../auth/services/auth_provider.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../caregiver_booking/screens/caregiver_list_screen.dart';
 import '../../caregiver_booking/screens/health_chatbot_screen.dart';
-import '../../caregiver_booking/screens/my_bookings_screen.dart';
+import '../../dashboard/screens/all_orders_screen.dart';
 import '../../hospital_appointment/screens/family_hospital_scheduler_screen.dart';
+import '../../pharmacy_delivery/models/pharmacy_order_model.dart';
 import '../../pharmacy_delivery/screens/pharmacy_list_screen.dart';
+import '../../pharmacy_delivery/screens/pharmacy_my_orders_screen.dart';
+import '../../pharmacy_delivery/services/pharmacy_firestore_service.dart';
 
 /// Main shell for logged-in regular users — Gojek-style bottom navbar
 class HomeScreen extends StatefulWidget {
@@ -19,13 +22,84 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  String? _lastCheckedUid;
+  final _pharmacyService = PharmacyFirestoreService();
 
   final List<Widget> _pages = const [
     _HomePage(),
     CaregiverListScreen(),
-    MyBookingsScreen(),
+    AllOrdersScreen(),
     HealthChatbotScreen(),
   ];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = context.read<AuthProvider>();
+    final uid = auth.currentUser?.uid;
+    if (uid != null && uid != _lastCheckedUid && auth.userRole == UserRole.user) {
+      _lastCheckedUid = uid;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _checkPharmacyUpdatesOnLogin(uid),
+      );
+    }
+  }
+
+  Future<void> _checkPharmacyUpdatesOnLogin(String uid) async {
+    if (!mounted) return;
+    final orders = await _pharmacyService.getActiveOrdersForUser(uid);
+    if (!mounted || orders.isEmpty) return;
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.notifications_active, color: Color(0xFF7B5EA7), size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Update Pesanan',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Pesanan farmasimu ada yang berubah status:',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            ...orders.map((o) => _OrderUpdateTile(order: o)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tutup'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7B5EA7),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PharmacyMyOrdersScreen()),
+              );
+            },
+            child: const Text('Lihat Pesanan'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -768,6 +842,55 @@ class _ServiceBanner extends StatelessWidget {
                 size: 14, color: color.withValues(alpha: 0.6)),
           ]),
         ),
+      ),
+    );
+  }
+}
+
+class _OrderUpdateTile extends StatelessWidget {
+  final PharmacyOrderModel order;
+  const _OrderUpdateTile({required this.order});
+
+  @override
+  Widget build(BuildContext context) {
+    final isShipped = order.status == PharmacyOrderStatus.shipped;
+    final color = isShipped ? const Color(0xFF2196F3) : const Color(0xFF7B5EA7);
+    final icon = isShipped ? Icons.local_shipping_outlined : Icons.inventory_2_outlined;
+    final label = isShipped ? 'Sedang dikirim' : 'Sedang dikemas';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  order.pharmacyName,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 12, color: color),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

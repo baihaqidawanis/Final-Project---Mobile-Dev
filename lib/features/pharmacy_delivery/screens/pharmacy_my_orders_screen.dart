@@ -15,8 +15,6 @@ class PharmacyMyOrdersScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final service = PharmacyFirestoreService();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -28,51 +26,63 @@ class PharmacyMyOrdersScreen extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
-      body: StreamBuilder<List<PharmacyOrderModel>>(
-        stream: service.getOrdersByUser(auth.currentUser?.uid ?? ''),
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final orders = snap.data ?? [];
-          if (orders.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.receipt_long_outlined,
-                    size: 72,
-                    color: _kPurple.withValues(alpha: 0.25),
+      body: PharmacyOrdersBody(uid: auth.currentUser?.uid ?? ''),
+    );
+  }
+}
+
+/// Body-only widget — reusable inside tab views without an AppBar.
+class PharmacyOrdersBody extends StatelessWidget {
+  final String uid;
+  const PharmacyOrdersBody({super.key, required this.uid});
+
+  @override
+  Widget build(BuildContext context) {
+    final service = PharmacyFirestoreService();
+    return StreamBuilder<List<PharmacyOrderModel>>(
+      stream: service.getOrdersByUser(uid),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final orders = snap.data ?? [];
+        if (orders.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.receipt_long_outlined,
+                  size: 72,
+                  color: _kPurple.withValues(alpha: 0.25),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Belum ada pesanan farmasi',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: AppColors.textSecondary,
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Belum ada pesanan',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: AppColors.textSecondary,
-                    ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Pesan obat dari apotek terdekat',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Pesan obat dari apotek terdekat',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: orders.length,
-            itemBuilder: (_, i) =>
-                _OrderCard(order: orders[i], service: service),
+                ),
+              ],
+            ),
           );
-        },
-      ),
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: orders.length,
+          itemBuilder: (_, i) =>
+              _OrderCard(order: orders[i], service: service),
+        );
+      },
     );
   }
 }
@@ -526,6 +536,7 @@ class _ConfirmDeliverySheetState extends State<_ConfirmDeliverySheet> {
         widget.order.pharmacyId,
         rating: _skipRating ? null : _rating,
         review: _skipRating ? null : _reviewCtrl.text.trim(),
+        userName: widget.order.userName,
       );
       if (mounted) {
         Navigator.pop(context);

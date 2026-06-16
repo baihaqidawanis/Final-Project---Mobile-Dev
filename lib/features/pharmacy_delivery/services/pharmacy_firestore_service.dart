@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/services/supabase_storage_service.dart';
 import '../models/pharmacy_profile_model.dart';
 import '../models/medicine_model.dart';
@@ -15,6 +16,7 @@ class PrescriptionUploadResult {
 
 class PharmacyFirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final _notif = NotificationService();
 
   CollectionReference<Map<String, dynamic>> get _pharmacies =>
       _db.collection('pharmacies');
@@ -103,6 +105,32 @@ class PharmacyFirestoreService {
 
   Future<void> createOrder(PharmacyOrderModel order) async {
     await _orders.add(order.toMap());
+    // Notify pharmacy (mitra) about new incoming order
+    _notif.sendNotificationToUser(
+      targetUid: order.pharmacyId,
+      title: 'Pesanan Baru Masuk!',
+      body:
+          '${order.userName} memesan ${order.items.length} item obat',
+      data: {'type': 'pharmacy_new_order'},
+    );
+  }
+
+  Future<int> getPendingOrderCount(String pharmacyId) async {
+    final snap = await _orders
+        .where('pharmacyId', isEqualTo: pharmacyId)
+        .where('status', isEqualTo: 'pending')
+        .get();
+    return snap.size;
+  }
+
+  Future<List<PharmacyOrderModel>> getActiveOrdersForUser(String userId) async {
+    final snap = await _orders
+        .where('userId', isEqualTo: userId)
+        .where('status', whereIn: ['accepted', 'shipped'])
+        .get();
+    final orders = snap.docs.map(PharmacyOrderModel.fromFirestore).toList();
+    orders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return orders;
   }
 
   Stream<List<PharmacyOrderModel>> getOrdersByUser(String userId) {
@@ -125,11 +153,43 @@ class PharmacyFirestoreService {
 
   Future<void> updateOrderStatus(
     String orderId,
-    PharmacyOrderStatus status,
-  ) async {
+    PharmacyOrderStatus status, {
+    PharmacyOrderModel? order,
+  }) async {
     await _orders.doc(orderId).update({
       'status': PharmacyOrderModel.statusToString(status),
     });
+
+    if (order == null) return;
+
+    switch (status) {
+      case PharmacyOrderStatus.accepted:
+        _notif.sendNotificationToUser(
+          targetUid: order.userId,
+          title: 'Pesanan Dikonfirmasi!',
+          body:
+              '${order.pharmacyName} menerima pesananmu dan sedang mengemas',
+          data: {'type': 'pharmacy_order_accepted', 'orderId': orderId},
+        );
+      case PharmacyOrderStatus.shipped:
+        _notif.sendNotificationToUser(
+          targetUid: order.userId,
+          title: 'Pesanan Sedang Dikirim!',
+          body:
+              'Pesananmu dari ${order.pharmacyName} sedang dalam perjalanan',
+          data: {'type': 'pharmacy_order_shipped', 'orderId': orderId},
+        );
+      case PharmacyOrderStatus.cancelled:
+        _notif.sendNotificationToUser(
+          targetUid: order.userId,
+          title: 'Pesanan Dibatalkan',
+          body:
+              'Maaf, pesananmu dari ${order.pharmacyName} tidak dapat diproses',
+          data: {'type': 'pharmacy_order_cancelled', 'orderId': orderId},
+        );
+      default:
+        break;
+    }
   }
 
   // Customer confirms receipt and optionally leaves rating + review.
@@ -139,6 +199,7 @@ class PharmacyFirestoreService {
     String pharmacyId, {
     double? rating,
     String? review,
+    String? userName,
   }) async {
     final orderRef = _orders.doc(orderId);
     final updateData = <String, dynamic>{
@@ -171,5 +232,14 @@ class PharmacyFirestoreService {
         });
       }
     });
+
+    // Notify pharmacy (mitra) that customer confirmed receipt
+    _notif.sendNotificationToUser(
+      targetUid: pharmacyId,
+      title: 'Pesanan Telah Diterima!',
+      body:
+          '${userName ?? 'Pelanggan'} mengkonfirmasi penerimaan pesanan',
+      data: {'type': 'pharmacy_order_delivered', 'orderId': orderId},
+    );
   }
 }

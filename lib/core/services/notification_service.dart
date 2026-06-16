@@ -126,17 +126,13 @@ class NotificationService {
   }
 
   /// Delete FCM token on logout (stop receiving notifications).
+  ///
+  /// NOTE: Token is intentionally kept so multiple accounts on the same
+  /// physical device can all receive notifications during testing.
+  /// All accounts logged in on this device share the same FCM token,
+  /// so swapping accounts does not break notification delivery.
   Future<void> deleteToken(String uid) async {
-    try {
-      await _fcm.deleteToken();
-      if (uid.isNotEmpty) {
-        await _db.collection('users').doc(uid).update({
-          'fcmToken': FieldValue.delete(),
-        });
-      }
-    } catch (e) {
-      debugPrint('[FCM] Failed to delete token: $e');
-    }
+    debugPrint('[FCM] Logout — FCM token retained for cross-account testing');
   }
 
   // ── Send Notification (FCM HTTP V1 API) ───────────────────────────────────

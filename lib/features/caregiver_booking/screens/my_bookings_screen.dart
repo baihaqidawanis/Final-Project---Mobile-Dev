@@ -7,12 +7,7 @@ import '../models/booking_model.dart';
 import '../services/caregiver_firestore_service.dart';
 import '../widgets/status_badge.dart';
 
-/// My Bookings Screen — shows all bookings made by the logged-in user.
-/// User can:
-/// - CANCEL any booking that is still pending (soft delete)
-/// - DELETE history entries (hard delete)
-/// - REVIEW completed bookings (rating + comment)
-/// - REPORT a caregiver (any booking status)
+/// My Bookings Screen — shows all caregiver bookings made by the logged-in user.
 class MyBookingsScreen extends StatelessWidget {
   const MyBookingsScreen({super.key});
 
@@ -23,8 +18,6 @@ class MyBookingsScreen extends StatelessWidget {
     final userName = auth.userName.isNotEmpty
         ? auth.userName
         : (auth.currentUser?.email ?? 'Pengguna');
-    final service = CaregiverFirestoreService();
-    final adminService = AdminService();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -42,75 +35,94 @@ class MyBookingsScreen extends StatelessWidget {
               )
             : null,
       ),
-      body: StreamBuilder<List<BookingModel>>(
-        stream: service.getBookingsByFamily(uid),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: CaregiverBookingsBody(uid: uid, userName: userName),
+    );
+  }
+}
 
-          final bookings = snapshot.data ?? [];
+/// Body-only widget — reusable inside tab views without an AppBar.
+class CaregiverBookingsBody extends StatelessWidget {
+  final String uid;
+  final String userName;
+  const CaregiverBookingsBody({
+    super.key,
+    required this.uid,
+    required this.userName,
+  });
 
-          if (bookings.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.calendar_today_outlined,
-                      size: 64, color: AppColors.textSecondary),
-                  SizedBox(height: 16),
-                  Text('Belum ada pesanan',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary)),
-                  SizedBox(height: 8),
-                  Text('Pesan caregiver dari halaman utama',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                ],
-              ),
-            );
-          }
+  @override
+  Widget build(BuildContext context) {
+    final service = CaregiverFirestoreService();
+    final adminService = AdminService();
 
-          final active = bookings
-              .where((b) =>
-                  b.status == BookingStatus.pending ||
-                  b.status == BookingStatus.accepted)
-              .toList();
-          final history = bookings
-              .where((b) =>
-                  b.status == BookingStatus.completed ||
-                  b.status == BookingStatus.cancelled)
-              .toList();
+    return StreamBuilder<List<BookingModel>>(
+      stream: service.getBookingsByFamily(uid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-            children: [
-              if (active.isNotEmpty) ...[
-                _sectionHeader('🟢 Pesanan Aktif'),
-                ...active.map((b) => _BookingCard(
-                      booking: b,
-                      service: service,
-                      adminService: adminService,
-                      userId: uid,
-                      userName: userName,
-                    )),
-                const SizedBox(height: 16),
+        final bookings = snapshot.data ?? [];
+
+        if (bookings.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.calendar_today_outlined,
+                    size: 64, color: AppColors.textSecondary),
+                SizedBox(height: 16),
+                Text('Belum ada booking caregiver',
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary)),
+                SizedBox(height: 8),
+                Text('Pesan caregiver dari halaman utama',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
               ],
-              if (history.isNotEmpty) ...[
-                _sectionHeader('Riwayat'),
-                ...history.map((b) => _BookingCard(
-                      booking: b,
-                      service: service,
-                      adminService: adminService,
-                      userId: uid,
-                      userName: userName,
-                    )),
-              ],
-            ],
+            ),
           );
-        },
-      ),
+        }
+
+        final active = bookings
+            .where((b) =>
+                b.status == BookingStatus.pending ||
+                b.status == BookingStatus.accepted)
+            .toList();
+        final history = bookings
+            .where((b) =>
+                b.status == BookingStatus.completed ||
+                b.status == BookingStatus.cancelled)
+            .toList();
+
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          children: [
+            if (active.isNotEmpty) ...[
+              _sectionHeader('🟢 Pesanan Aktif'),
+              ...active.map((b) => _BookingCard(
+                    booking: b,
+                    service: service,
+                    adminService: adminService,
+                    userId: uid,
+                    userName: userName,
+                  )),
+              const SizedBox(height: 16),
+            ],
+            if (history.isNotEmpty) ...[
+              _sectionHeader('Riwayat'),
+              ...history.map((b) => _BookingCard(
+                    booking: b,
+                    service: service,
+                    adminService: adminService,
+                    userId: uid,
+                    userName: userName,
+                  )),
+            ],
+          ],
+        );
+      },
     );
   }
 

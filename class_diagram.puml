@@ -1,0 +1,342 @@
+@startuml HealinkClassDiagram
+
+title Healink App — Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam classFontSize 11
+skinparam packageStyle rectangle
+skinparam roundcorner 8
+skinparam ArrowColor #555555
+skinparam ClassBorderColor #999999
+skinparam ClassBackgroundColor #FEFEFE
+skinparam ClassHeaderBackgroundColor #F0F0F0
+skinparam PackageBorderColor #BBBBBB
+skinparam linetype ortho
+
+' ═══════════════════════════════════════════════════════════════
+' CORE
+' ═══════════════════════════════════════════════════════════════
+package "core" #EEF4FF {
+
+  class AppConfig {
+    + {static} useRealApis : bool
+    + {static} groqApiKey : String
+    + {static} supabaseUrl : String
+    + {static} supabaseAnonKey : String
+    + {static} weatherRepository : WeatherRepository
+  }
+
+  class NotificationService <<Singleton>> {
+    - {static} _instance : NotificationService
+    - _fcm : FirebaseMessaging
+    - _db : FirebaseFirestore
+    - _cachedAccessToken : String?
+    - _tokenExpiry : DateTime?
+    --
+    + initialize() : Future<String?>
+    + saveTokenToFirestore(uid : String) : Future<void>
+    + deleteToken(uid : String) : Future<void>
+    + sendNotificationToUser(targetUid, title, body, data?) : Future<void>
+    - _getAccessToken() : Future<String?>
+    - _handleForegroundMessage(msg) : void
+    - _handleMessageOpenedApp(msg) : void
+  }
+
+  class SupabaseStorageService {
+    - _supabase : SupabaseClient
+    --
+    + uploadFile(file : File, filePath : String) : Future<String>
+    + uploadBytes(bytes : Uint8List, filePath, contentType) : Future<String>
+  }
+
+}
+
+' ═══════════════════════════════════════════════════════════════
+' AUTH
+' ═══════════════════════════════════════════════════════════════
+package "auth" #FFF8EE {
+
+  enum UserRole {
+    admin
+    user
+    caregiver
+    hospital
+    pharmacy
+  }
+
+  class UserModel {
+    + uid : String
+    + name : String
+    + email : String
+    + role : String
+    + createdAt : DateTime
+    --
+    + toMap() : Map<String, dynamic>
+    + {static} fromFirestore(data : Map) : UserModel
+  }
+
+  abstract class ChangeNotifier <<Flutter>>
+
+  class AuthProvider {
+    - _auth : FirebaseAuth
+    - _db : FirebaseFirestore
+    - _currentUser : User?
+    - _userRole : UserRole?
+    - _userName : String
+    - _isLoading : bool
+    --
+    + currentUser : User?
+    + userRole : UserRole?
+    + isLoggedIn : bool
+    + isLoading : bool
+    + userName : String
+    --
+    + registerUser(name, email, password) : Future<String?>
+    + registerMitra(name, email, password, role, profile?) : Future<String?>
+    + login(email, password) : Future<String?>
+    + logout() : Future<void>
+    - _onAuthStateChanged(user : User?) : Future<void>
+    - _fetchOrCreateUserRole(user : User) : Future<void>
+  }
+
+  AuthProvider --|> ChangeNotifier
+
+}
+
+' ═══════════════════════════════════════════════════════════════
+' CAREGIVER BOOKING
+' ═══════════════════════════════════════════════════════════════
+package "caregiver_booking" #EEFFF2 {
+
+  enum BookingStatus {
+    pending
+    accepted
+    completed
+    cancelled
+  }
+
+  class BookingModel {
+    + bookingId : String
+    + familyId : String
+    + caregiverId : String
+    + caregiverName : String
+    + familyName : String
+    + dateTime : DateTime
+    + specialization : String
+    + pricePerHour : double
+    + notes : String
+    + clinicalNote : String
+    + status : BookingStatus
+    + createdAt : DateTime
+    --
+    + {static} statusToString(status) : String
+    + {static} fromFirestore(doc) : BookingModel
+    + toMap() : Map<String, dynamic>
+  }
+
+  class CaregiverProfileModel {
+    + uid : String
+    + name : String
+    + specialization : String
+    + pricePerHour : double
+    + rating : double
+    + totalReviews : int
+    + photoUrl : String
+    + bio : String
+    + area : String
+    + isAvailable : bool
+    --
+    + {static} fromFirestore(doc) : CaregiverProfileModel
+    + toMap() : Map<String, dynamic>
+  }
+
+  class CaregiverFirestoreService {
+    - _db : FirebaseFirestore
+    --
+    + getCaregivers() : Stream<List<CaregiverProfileModel>>
+    + getCaregiverProfileStream(uid) : Stream<Map?>
+    + createBooking(booking : BookingModel) : Future<void>
+    + getBookingsByFamily(familyId) : Stream<List<BookingModel>>
+    + getBookingsByCaregiver(caregiverId) : Stream<List<BookingModel>>
+    + getActiveBookingsByCaregiver(uid) : Stream<List<BookingModel>>
+    + getCompletedBookingsByCaregiver(uid) : Stream<List<BookingModel>>
+    + updateBookingStatus(bookingId, status) : Future<void>
+    + completeBookingWithNote(bookingId, note) : Future<void>
+    + cancelBooking(bookingId) : Future<void>
+    + deleteBookingHistory(bookingId) : Future<void>
+    + updateCaregiverProfile(uid, fields) : Future<void>
+    + uploadProfilePhoto(uid, bytes, contentType) : Future<String>
+  }
+
+}
+
+' ═══════════════════════════════════════════════════════════════
+' HOSPITAL APPOINTMENT
+' ═══════════════════════════════════════════════════════════════
+package "hospital_appointment" #F8F0FF {
+
+  class AppointmentModel {
+    + appointmentId : String
+    + familyId : String
+    + hospitalId : String
+    + dateString : String
+    + timeSlot : String
+    + status : String
+    + patientName : String
+    + symptoms : String
+    + statusReason : String
+    --
+    + {static} fromFirestore(doc) : AppointmentModel
+    + {static} fromMap(data, id) : AppointmentModel
+    + toMap() : Map<String, dynamic>
+    + copyWith(...) : AppointmentModel
+  }
+
+  class HospitalFirestoreService {
+    - _firestore : FirebaseFirestore
+    --
+    + createAppointment(model) : Future<String>
+    + getAppointmentsForDate(dateString) : Stream<List<AppointmentModel>>
+    + getFamilyAppointments(familyId) : Stream<List<AppointmentModel>>
+    + getHospitalDailyAgenda(hospitalId, dateString) : Stream<List<AppointmentModel>>
+    + updateAppointmentStatus(id, status, reason?) : Future<void>
+    + cancelAppointment(appointmentId) : Future<void>
+    - _sendFCMNotification(model) : Future<void>
+  }
+
+}
+
+' ═══════════════════════════════════════════════════════════════
+' PHARMACY DELIVERY
+' ═══════════════════════════════════════════════════════════════
+package "pharmacy_delivery" #FFF0F0 {
+
+  enum PharmacyOrderStatus {
+    pending
+    accepted
+    shipped
+    delivered
+    cancelled
+  }
+
+  class OrderItem {
+    + medicineId : String
+    + medicineName : String
+    + price : double
+    + quantity : int
+    --
+    + toMap() : Map<String, dynamic>
+    + {static} fromMap(data) : OrderItem
+  }
+
+  class PharmacyOrderModel {
+    + orderId : String
+    + userId : String
+    + userName : String
+    + pharmacyId : String
+    + pharmacyName : String
+    + items : List<OrderItem>
+    + totalPrice : double
+    + deliveryAddress : String
+    + notes : String
+    + prescriptionImageUrl : String?
+    + prescriptionImagePath : String?
+    + status : PharmacyOrderStatus
+    + createdAt : DateTime
+    + rating : double?
+    + review : String?
+    --
+    + {static} statusToString(status) : String
+    + {static} fromFirestore(doc) : PharmacyOrderModel
+    + toMap() : Map<String, dynamic>
+  }
+
+  class PharmacyProfileModel {
+    + uid : String
+    + name : String
+    + address : String
+    + area : String
+    + phone : String
+    + openHours : String
+    + rating : double
+    + totalReviews : int
+    + photoUrl : String
+    + isOpen : bool
+    --
+    + {static} fromFirestore(doc) : PharmacyProfileModel
+    + toMap() : Map<String, dynamic>
+  }
+
+  class MedicineModel {
+    + id : String
+    + pharmacyId : String
+    + name : String
+    + description : String
+    + price : double
+    + category : String
+    + isAvailable : bool
+    --
+    + {static} fromFirestore(doc) : MedicineModel
+    + toMap() : Map<String, dynamic>
+  }
+
+  class PrescriptionUploadResult {
+    + url : String
+    + path : String
+  }
+
+  class PharmacyFirestoreService {
+    - _db : FirebaseFirestore
+    - _notif : NotificationService
+    --
+    + getPharmacies() : Stream<List<PharmacyProfileModel>>
+    + getPharmacyProfile(uid) : Future<Map?>
+    + updatePharmacyProfile(uid, fields) : Future<void>
+    + getMedicinesByPharmacy(pharmacyId) : Stream<List<MedicineModel>>
+    + getAllMedicinesByPharmacy(pharmacyId) : Stream<List<MedicineModel>>
+    + addMedicine(medicine) : Future<void>
+    + updateMedicine(id, fields) : Future<void>
+    + deleteMedicine(id) : Future<void>
+    + uploadPrescriptionImage(userId, pharmacyId, ...) : Future<PrescriptionUploadResult>
+    + createOrder(order : PharmacyOrderModel) : Future<void>
+    + getPendingOrderCount(pharmacyId) : Future<int>
+    + getActiveOrdersForUser(userId) : Future<List<PharmacyOrderModel>>
+    + getOrdersByUser(userId) : Stream<List<PharmacyOrderModel>>
+    + getOrdersByPharmacy(pharmacyId) : Stream<List<PharmacyOrderModel>>
+    + updateOrderStatus(orderId, status, order?) : Future<void>
+    + confirmDelivery(orderId, pharmacyId, rating?, review?, userName?) : Future<void>
+  }
+
+}
+
+' ═══════════════════════════════════════════════════════════════
+' RELATIONSHIPS
+' ═══════════════════════════════════════════════════════════════
+
+' ── auth ──
+AuthProvider ..> UserRole       : uses
+AuthProvider ..> UserModel      : creates
+AuthProvider ..> NotificationService : uses
+
+' ── caregiver_booking ──
+BookingModel ..> BookingStatus  : uses
+CaregiverFirestoreService ..> BookingModel          : manages
+CaregiverFirestoreService ..> CaregiverProfileModel : manages
+CaregiverFirestoreService ..> SupabaseStorageService : uses
+
+' ── hospital_appointment ──
+HospitalFirestoreService ..> AppointmentModel   : manages
+HospitalFirestoreService ..> NotificationService : uses
+
+' ── pharmacy_delivery ──
+PharmacyOrderModel "1" *-- "0..*" OrderItem       : contains >
+PharmacyOrderModel          ..> PharmacyOrderStatus  : uses
+MedicineModel               ..> PharmacyProfileModel : belongs to (pharmacyId)
+PharmacyFirestoreService    ..> PharmacyOrderModel   : manages
+PharmacyFirestoreService    ..> PharmacyProfileModel : manages
+PharmacyFirestoreService    ..> MedicineModel        : manages
+PharmacyFirestoreService    ..> PrescriptionUploadResult : returns
+PharmacyFirestoreService    ..> NotificationService  : uses
+PharmacyFirestoreService    ..> SupabaseStorageService : uses
+
+@enduml
