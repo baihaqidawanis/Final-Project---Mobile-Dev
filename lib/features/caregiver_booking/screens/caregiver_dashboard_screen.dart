@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../features/auth/services/auth_provider.dart';
+import '../../admin/services/admin_service.dart';
 import '../models/booking_model.dart';
 import '../services/caregiver_firestore_service.dart';
 import '../widgets/status_badge.dart';
@@ -37,7 +40,7 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   /// Returns a stream of active bookings. Firestore automatically handles local caching
@@ -349,6 +352,16 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
                       ],
                     ),
                   ),
+                  const Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.history_rounded, size: 18),
+                        SizedBox(width: 6),
+                        Text('Riwayat'),
+                      ],
+                    ),
+                  ),
                 ],
               );
             },
@@ -360,6 +373,7 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
         children: [
           _buildRequestsTab(uid),
           _buildProfileTab(uid),
+          _buildHistoryTab(uid),
         ],
       ),
     );
@@ -737,10 +751,209 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
                 ),
               ),
               const SizedBox(height: 16),
+
+              // ── FCM Token Debug (untuk demo notifikasi ke Firebase Console) ──
+              _FcmTokenCard(uid: uid),
+              const SizedBox(height: 16),
             ],
           ),
         );
       },
+    );
+  }
+
+  // ── TAB 3: History (completed + cancelled) ───────────────────────────────
+  Widget _buildHistoryTab(String uid) {
+    if (uid.isEmpty) return const Center(child: Text('Silakan login ulang'));
+    return StreamBuilder<List<BookingModel>>(
+      stream: _service.getCompletedBookingsByCaregiver(uid),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary));
+        }
+        final bookings = snapshot.data ?? [];
+        if (bookings.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(40),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.history_rounded,
+                        size: 52, color: AppColors.primary),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text('Belum ada riwayat',
+                      style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Riwayat booking selesai & dibatalkan\nakan tampil di sini',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.5),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          children: bookings.map((b) => _historyCard(b)).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _historyCard(BookingModel b) {
+    final isCompleted = b.status == BookingStatus.completed;
+    final statusColor =
+        isCompleted ? AppColors.completed : AppColors.cancelled;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: statusColor.withValues(alpha: 0.1),
+              child: Text(
+                b.familyName.isNotEmpty ? b.familyName[0].toUpperCase() : 'K',
+                style: TextStyle(
+                    fontWeight: FontWeight.w700, color: statusColor),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(b.familyName,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary)),
+                  Text(b.specialization,
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary)),
+                ],
+              ),
+            ),
+            StatusBadge(status: b.status),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [
+            _chip(Icons.calendar_today_outlined,
+                '${b.dateTime.day}/${b.dateTime.month}/${b.dateTime.year}'),
+            const SizedBox(width: 10),
+            _chip(Icons.access_time_rounded,
+                '${b.dateTime.hour.toString().padLeft(2, '0')}:${b.dateTime.minute.toString().padLeft(2, '0')}'),
+            const SizedBox(width: 10),
+            _chip(Icons.payments_outlined, 'Rp ${_fmt(b.pricePerHour)}/jam'),
+          ]),
+          if (isCompleted && b.clinicalNote.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.completed.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: AppColors.completed.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.notes_rounded,
+                      size: 13, color: AppColors.completed),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(b.clinicalNote,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textSecondary,
+                side: const BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              onPressed: () => _confirmDeleteHistory(b),
+              icon: const Icon(Icons.delete_outline, size: 16),
+              label: const Text('Hapus Riwayat',
+                  style: TextStyle(fontSize: 13)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteHistory(BookingModel b) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Hapus Riwayat?',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(
+          'Riwayat booking dengan ${b.familyName} akan dihapus permanen.',
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.cancelled),
+            onPressed: () async {
+              await _service.deleteBookingHistory(b.bookingId);
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -868,7 +1081,29 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
                     ],
                   ),
                 ),
-                StatusBadge(status: b.status),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    StatusBadge(status: b.status),
+                    const SizedBox(height: 4),
+                    GestureDetector(
+                      onTap: () => _showReportUserDialog(context, b),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.flag_outlined,
+                              size: 12, color: AppColors.cancelled),
+                          SizedBox(width: 3),
+                          Text('Laporkan',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.cancelled,
+                                  fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -985,6 +1220,102 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
     );
   }
 
+  void _showReportUserDialog(BuildContext context, BookingModel b) {
+    final auth = context.read<AuthProvider>();
+    final caregiverName = auth.userName.isNotEmpty ? auth.userName : 'Mitra';
+    final caregiverId = auth.currentUser?.uid ?? '';
+    String selectedReason = 'Tidak hadir tanpa konfirmasi';
+    final descCtrl = TextEditingController();
+    final reasons = [
+      'Tidak hadir tanpa konfirmasi',
+      'Bersikap tidak sopan',
+      'Memberikan data palsu',
+      'Permintaan di luar layanan',
+      'Penipuan atau kecurangan',
+      'Lainnya',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setInner) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Laporkan ${b.familyName}',
+              style: const TextStyle(fontWeight: FontWeight.w700)),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text(
+                  'Laporan akan ditinjau oleh tim admin Healink.',
+                  style: TextStyle(
+                      color: AppColors.textSecondary, fontSize: 13)),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedReason,
+                decoration: InputDecoration(
+                  labelText: 'Alasan Laporan',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+                items: reasons
+                    .map((r) => DropdownMenuItem(
+                        value: r,
+                        child: Text(r,
+                            style: const TextStyle(fontSize: 13))))
+                    .toList(),
+                onChanged: (v) =>
+                    setInner(() => selectedReason = v ?? selectedReason),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: 'Keterangan Tambahan',
+                  hintText: 'Jelaskan kejadian secara detail...',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Batal')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.cancelled),
+              onPressed: () async {
+                await AdminService().submitReport(
+                  reporterId: caregiverId,
+                  reporterName: caregiverName,
+                  reporterRole: 'caregiver',
+                  targetId: b.familyId,
+                  targetName: b.familyName,
+                  targetType: 'user',
+                  reason: selectedReason,
+                  description: descCtrl.text.trim(),
+                  bookingId: b.bookingId,
+                );
+                if (context.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text(
+                            '📋 Laporan dikirim. Tim admin akan meninjau segera.'),
+                        backgroundColor: AppColors.primary),
+                  );
+                }
+              },
+              child: const Text('Kirim Laporan'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _confirmDecline(BookingModel b) {
     showDialog(
       context: context,
@@ -1039,5 +1370,85 @@ class _CaregiverDashboardScreenState extends State<CaregiverDashboardScreen>
   String _fmt(double price) {
     if (price >= 1000) return '${(price / 1000).toStringAsFixed(0)}k';
     return price.toStringAsFixed(0);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  FCM Token Card — untuk demo push notification via Firebase Console
+// ════════════════════════════════════════════════════════════════════════════
+class _FcmTokenCard extends StatelessWidget {
+  final String uid;
+  const _FcmTokenCard({required this.uid});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots(),
+      builder: (context, snap) {
+        final token = (snap.data?.data()
+                as Map<String, dynamic>?)?['fcmToken'] as String? ??
+            '';
+        if (token.isEmpty) return const SizedBox();
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0FDF4),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF86EFAC)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(children: [
+                Icon(Icons.notifications_active_rounded,
+                    size: 16, color: Color(0xFF16A34A)),
+                SizedBox(width: 6),
+                Text('FCM Token (untuk demo notifikasi)',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF16A34A))),
+              ]),
+              const SizedBox(height: 8),
+              Text(
+                token,
+                style: const TextStyle(
+                    fontSize: 10,
+                    color: Color(0xFF166534),
+                    fontFamily: 'monospace'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF16A34A),
+                    side: const BorderSide(color: Color(0xFF86EFAC)),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.copy, size: 14),
+                  label: const Text('Copy Token',
+                      style: TextStyle(fontSize: 12)),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: token));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text(
+                            '✅ Token disalin! Paste ke Firebase Console → Cloud Messaging → Test Message'),
+                        duration: Duration(seconds: 3)));
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

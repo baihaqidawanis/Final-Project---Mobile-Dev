@@ -69,10 +69,13 @@ class _CaregiverListScreenState extends State<CaregiverListScreen> {
           'Caregiver',
           style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios,
+                    color: AppColors.textPrimary),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
       ),
       body: Column(
         children: [

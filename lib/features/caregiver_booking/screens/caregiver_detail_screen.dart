@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/notification_service.dart';
@@ -228,8 +229,33 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
                         border:
                             Border.all(color: Colors.white, width: 3),
                       ),
-                      child: const Icon(Icons.person,
-                          color: Colors.white, size: 44),
+                      child: c.photoUrl.isNotEmpty
+                          ? ClipOval(
+                              child: c.photoUrl.startsWith('data:image')
+                                  ? Image.memory(
+                                      base64Decode(
+                                          c.photoUrl.split(',').last),
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => const Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 44),
+                                    )
+                                  : Image.network(
+                                      c.photoUrl,
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => const Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 44),
+                                    ),
+                            )
+                          : const Icon(Icons.person,
+                              color: Colors.white, size: 44),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -363,13 +389,16 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
                                 textAlign: TextAlign.center,
                                 style: TextStyle(color: AppColors.textSecondary)),
                             const SizedBox(height: 24),
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                Navigator.push(context,
-                                    MaterialPageRoute(builder: (_) => const LoginScreen()));
-                              },
-                              child: const Text('Masuk / Daftar'),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  Navigator.push(context,
+                                      MaterialPageRoute(builder: (_) => const LoginScreen()));
+                                },
+                                child: const Text('Masuk / Daftar'),
+                              ),
                             ),
                             const SizedBox(height: 8),
                           ],
@@ -435,23 +464,24 @@ class _CaregiverDetailScreenState extends State<CaregiverDetailScreen> {
                 color: filled ? AppColors.primary : AppColors.textSecondary,
                 size: 20),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary)),
-                Text(value,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: filled
-                          ? AppColors.primary
-                          : AppColors.textSecondary,
-                    )),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.textSecondary)),
+                  Text(value,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: filled
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                      )),
+                ],
+              ),
             ),
-            const Spacer(),
             const Icon(Icons.chevron_right, color: AppColors.textSecondary),
           ],
         ),

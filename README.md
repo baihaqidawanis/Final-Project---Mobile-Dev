@@ -5,7 +5,40 @@
 
 ---
 
-## 📋 Overview
+## Kriteria Penilaian — Checklist
+
+### 2.1 Core Requirements
+
+| No | Kriteria | Status |
+|----|----------|--------|
+| 1 | Individual feature — end-to-end cloud ↔ mobile | Terpenuhi (lihat docs tiap member) |
+| 2 | SDG alignment | Terpenuhi — SDG 3: Good Health and Well-Being |
+| 3 | Full CRUD tiap fitur individual | Terpenuhi (lihat BAIHAQI.md + docs lain) |
+| 4 | Single GitHub repository | Terpenuhi |
+| 5 | User Authentication (wajib, tidak dihitung fitur) | Terpenuhi — Firebase Auth |
+| 6 | Cloud Infrastructure | Terpenuhi — Firestore, Supabase Storage, FCM |
+| 7 | External API integration | Terpenuhi — Groq Cloud AI (Baihaqi) |
+| 8 | Weekly commits | Terpenuhi |
+
+### 2.3 Technical Requirements (Mandatory)
+
+| Komponen | Status | Keterangan |
+|----------|--------|------------|
+| Firebase Authentication | Terpenuhi | Login/register user, caregiver, admin |
+| Cloud Firestore | Terpenuhi | CRUD semua fitur, real-time stream |
+| Push Notifications (FCM) | Terpenuhi | Notifikasi booking dua arah (caregiver ↔ user) |
+| Navigation Bar | Terpenuhi | Bottom nav 4 tab di `home_screen.dart` |
+
+### 2.3 Bonus (Extra Credit)
+
+| Bonus | Status | Implementasi |
+|-------|--------|--------------|
+| Cloud Storage | Terpenuhi | Supabase Storage — upload foto profil caregiver |
+| Firebase Crashlytics / App Flavors | — | — |
+
+---
+
+## Overview
 
 Healink adalah aplikasi mobile on-demand untuk layanan kesehatan rumahan, mirip model Gojek/Traveloka. Pengguna bisa browse dan memesan **caregiver**, menjadwalkan konsultasi **rumah sakit**, dan memesan **obat** — semuanya dalam satu aplikasi.
 
@@ -92,7 +125,7 @@ App buka → HomeScreen (tanpa login)
 
 Sign In
   ├── Pengguna → HomeScreen (bisa langsung pesan)
-  ├── Caregiver → Dashboard (Tab: Pesanan | Riwayat | Edit Profil + Upload Foto)
+  ├── Caregiver → Dashboard (3 Tab: Requests | Profil Saya | Riwayat)
   ├── Hospital  → HospitalAdminDashboardScreen (Student B)
   ├── Pharmacy  → PharmacyOrderIntakeScreen (Student C)
   └── Admin → Admin Panel
