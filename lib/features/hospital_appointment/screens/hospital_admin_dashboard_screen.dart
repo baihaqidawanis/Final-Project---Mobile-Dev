@@ -391,52 +391,6 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
     );
   }
 
-  void _showReleaseSlotDialog(BuildContext context, AppointmentModel appointment) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Batalkan / Lepas Slot'),
-          content: Text(
-            'Apakah Anda yakin ingin membatalkan janji temu untuk ${appointment.patientName} (${appointment.timeSlot})?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                try {
-                  await _firestoreService.cancelAppointment(appointment.appointmentId);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Janji temu berhasil dibatalkan'),
-                        backgroundColor: AppColors.accent,
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Gagal membatalkan: $e'),
-                        backgroundColor: AppColors.cancelled,
-                      ),
-                    );
-                  }
-                }
-              },
-              style: TextButton.styleFrom(foregroundColor: AppColors.cancelled),
-              child: const Text('Lepaskan Slot'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -866,7 +820,7 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                         itemCount: _timeSlots.length,
                         itemBuilder: (context, index) {
                           final slot = _timeSlots[index];
-                          final appointmentIndex = appointments.indexWhere((a) => a.timeSlot == slot);
+                          final appointmentIndex = appointments.indexWhere((a) => a.timeSlot == slot && a.status.toLowerCase() != 'cancelled');
                           final hasAppointment = appointmentIndex != -1;
                           final appointment = hasAppointment ? appointments[appointmentIndex] : null;
 
@@ -875,7 +829,7 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                           return GestureDetector(
                             onTap: () {
                               if (hasAppointment) {
-                                _showReleaseSlotDialog(context, appointment!);
+                                _updateStatusWithReasonDialog(appointment!, 'cancelled');
                               } else {
                                 _showOfflineBookingBottomSheet(context, slot, hospitalId);
                               }
@@ -888,7 +842,7 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                                 borderRadius: BorderRadius.circular(16),
                                 side: BorderSide(
                                   color: hasAppointment
-                                      ? (isOffline ? AppColors.pending : HospitalColors.primary)
+                                      ? _getStatusColor(appointment!.status)
                                       : AppColors.accent.withValues(alpha: 0.3),
                                   width: 1.5,
                                 ),
@@ -918,7 +872,7 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                                               : Icons.add_circle_outline_rounded,
                                           size: 20,
                                           color: hasAppointment
-                                              ? (isOffline ? AppColors.pending : HospitalColors.primary)
+                                              ? _getStatusColor(appointment!.status)
                                               : AppColors.accent,
                                         ),
                                       ],
@@ -943,14 +897,40 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                                                 color: AppColors.textPrimary,
                                               ),
                                             ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              isOffline ? 'Walk-in (Offline)' : 'Booking Online',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                color: isOffline ? AppColors.pending : HospitalColors.primary,
-                                              ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    isOffline ? 'Offline' : 'Online',
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: AppColors.textSecondary,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: _getStatusColor(appointment.status).withValues(alpha: 0.1),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    border: Border.all(
+                                                      color: _getStatusColor(appointment.status).withValues(alpha: 0.3),
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    appointment.status.toUpperCase(),
+                                                    style: TextStyle(
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.w800,
+                                                      color: _getStatusColor(appointment.status),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),
@@ -1025,6 +1005,43 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
     );
   }
 
+  void _showPhotoPreviewDialog(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: CachedNetworkImage(
+                imageUrl: url,
+                fit: BoxFit.contain,
+                placeholder: (context, url) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+                errorWidget: (context, url, error) => const Icon(Icons.error, color: Colors.white, size: 48),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: CircleAvatar(
+                backgroundColor: Colors.black54,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildProfileTab(String hospitalId) {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance.collection('users').doc(hospitalId).snapshots(),
@@ -1059,19 +1076,26 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
                 // Profile Photo
                 Stack(
                   children: [
-                    CircleAvatar(
-                      radius: 64,
-                      backgroundColor: AppColors.border,
-                      backgroundImage: _profilePhotoUrl.isNotEmpty
-                          ? CachedNetworkImageProvider(_profilePhotoUrl)
-                          : null,
-                      child: _profilePhotoUrl.isEmpty
-                          ? const Icon(
-                              Icons.local_hospital_rounded,
-                              size: 64,
-                              color: HospitalColors.primary,
-                            )
-                          : null,
+                    GestureDetector(
+                      onTap: () {
+                        if (_profilePhotoUrl.isNotEmpty) {
+                          _showPhotoPreviewDialog(context, _profilePhotoUrl);
+                        }
+                      },
+                      child: CircleAvatar(
+                        radius: 64,
+                        backgroundColor: AppColors.border,
+                        backgroundImage: _profilePhotoUrl.isNotEmpty
+                            ? CachedNetworkImageProvider(_profilePhotoUrl)
+                            : null,
+                        child: _profilePhotoUrl.isEmpty
+                            ? const Icon(
+                                Icons.local_hospital_rounded,
+                                size: 64,
+                                color: HospitalColors.primary,
+                              )
+                            : null,
+                      ),
                     ),
                     Positioned(
                       bottom: 0,
@@ -1207,7 +1231,7 @@ class _HospitalAdminDashboardScreenState extends State<HospitalAdminDashboardScr
     try {
       final String publicUrl = await SupabaseStorageService().uploadFile(
         file: File(image.path),
-        filePath: 'hospitals/profile_$hospitalId.jpg',
+        filePath: 'hospitals/profile_${hospitalId}_${DateTime.now().millisecondsSinceEpoch}.jpg',
       );
 
       setState(() {

@@ -32,9 +32,9 @@ class CinemaSeatGrid extends StatelessWidget {
       '17:00',
     ];
 
-    // Find all booked/taken slots (status == 'booked')
+    // Find all booked/taken slots (status != 'cancelled')
     final Set<String> bookedSlots = appointments
-        .where((appointment) => appointment.status == 'booked')
+        .where((appointment) => appointment.status.toLowerCase() != 'cancelled')
         .map((appointment) => appointment.timeSlot)
         .toSet();
 
